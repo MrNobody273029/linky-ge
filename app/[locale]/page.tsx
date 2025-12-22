@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { getTranslations } from 'next-intl/server';
 import { Pill, Card, Button } from '@/components/ui';
 import { HeroForm } from '@/components/HeroForm';

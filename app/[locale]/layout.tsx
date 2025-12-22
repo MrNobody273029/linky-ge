@@ -1,6 +1,6 @@
 import '@/app/globals.css';
 import { NextIntlClientProvider } from 'next-intl';
-import { getMessages, getTranslations } from 'next-intl/server';
+import { getMessages, getTranslations, unstable_setRequestLocale } from 'next-intl/server';
 import { locales } from '@/locales';
 import { notFound } from 'next/navigation';
 import { NavBar } from '@/components/NavBar';
@@ -29,16 +29,15 @@ export default async function LocaleLayout({
   const { locale } = params;
   if (!locales.includes(locale as any)) notFound();
 
+  // ✅ IMPORTANT: tells next-intl to use the locale from params, not from headers()
+  unstable_setRequestLocale(locale);
+
   const messages = await getMessages();
 
   return (
     <html lang={locale} suppressHydrationWarning>
       <body>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          enableSystem={false}
-        >
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
           <NextIntlClientProvider locale={locale} messages={messages}>
             <NavBar locale={locale} />
             <main>{children}</main>
