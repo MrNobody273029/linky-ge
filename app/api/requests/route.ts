@@ -46,7 +46,7 @@ export async function POST(req: Request) {
 
 type PatchBody = {
   id?: string;
-  action?: 'pay30' | 'pay70' | 'decline';
+action?: 'pay50' | 'pay50_rest' | 'decline';
   reason?: string;
 };
 
@@ -67,34 +67,36 @@ export async function PATCH(req: Request) {
     });
     if (!r) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-    // ✅ pay 30% (demo): only when OFFERED and offer exists
-    if (action === 'pay30') {
-      if (r.status !== 'OFFERED') return NextResponse.json({ error: 'Not allowed' }, { status: 400 });
-      if (!r.offer) return NextResponse.json({ error: 'No offer yet' }, { status: 400 });
+// ✅ pay 50% (demo): only when OFFERED and offer exists
+if (action === 'pay50') {
+  if (r.status !== 'OFFERED') return NextResponse.json({ error: 'Not allowed' }, { status: 400 });
+  if (!r.offer) return NextResponse.json({ error: 'No offer yet' }, { status: 400 });
 
-      await prisma.request.update({
-        where: { id },
-        data: {
-          status: RequestStatus.PAID_PARTIALLY,
-          paymentStatus: PaymentStatus.PARTIAL
-        }
-      });
-
-      return NextResponse.json({ ok: true });
+  await prisma.request.update({
+    where: { id },
+    data: {
+      status: RequestStatus.PAID_PARTIALLY,
+      paymentStatus: PaymentStatus.PARTIAL
     }
+  });
 
-    // ✅ pay 70% (demo): only when ARRIVED and payment is PARTIAL
-    if (action === 'pay70') {
-      if (r.status !== 'ARRIVED') return NextResponse.json({ error: 'Not arrived yet' }, { status: 400 });
-      if (r.paymentStatus !== 'PARTIAL') return NextResponse.json({ error: 'Not allowed' }, { status: 400 });
+  return NextResponse.json({ ok: true });
+}
 
-      await prisma.request.update({
-        where: { id },
-        data: { paymentStatus: PaymentStatus.FULL }
-      });
 
-      return NextResponse.json({ ok: true });
-    }
+// ✅ pay remaining 50% (demo): only when ARRIVED and payment is PARTIAL
+if (action === 'pay50_rest') {
+  if (r.status !== 'ARRIVED') return NextResponse.json({ error: 'Not arrived yet' }, { status: 400 });
+  if (r.paymentStatus !== 'PARTIAL') return NextResponse.json({ error: 'Not allowed' }, { status: 400 });
+
+  await prisma.request.update({
+    where: { id },
+    data: { paymentStatus: PaymentStatus.FULL }
+  });
+
+  return NextResponse.json({ ok: true });
+}
+
 
     // ✅ decline (optional reason): only when OFFERED
     if (action === 'decline') {

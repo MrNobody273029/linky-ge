@@ -1,0 +1,210 @@
+'use client';
+
+import Image from 'next/image';
+import { Card, Button } from '@/components/ui';
+import { useMemo, useState } from 'react';
+
+type Props = {
+  locale: string;
+  title: string;
+  imageUrl: string | null;
+  originalPrice: number | null;
+  linkyPrice: number;
+  currency: string;
+  etaDays: number;
+  sourceRequestId: string;
+  onClose: () => void;
+};
+
+function calcPay50(total: number) {
+  return Math.ceil(total * 0.5);
+}
+
+export function ProductShowcaseModal({
+  locale,
+  title,
+  imageUrl,
+  originalPrice,
+  linkyPrice,
+  currency,
+  etaDays,
+  sourceRequestId,
+  onClose
+}: Props) {
+  const [loading, setLoading] = useState(false);
+
+  // ✅ PREVIEW modal only (does NOT create request)
+  const [payOpen, setPayOpen] = useState(false);
+
+  const pay50Total = linkyPrice;
+  const pay50Amount = useMemo(() => calcPay50(pay50Total), [pay50Total]);
+
+  function openPayPreview(e?: React.MouseEvent) {
+    e?.preventDefault();
+    e?.stopPropagation();
+
+    if (!sourceRequestId) {
+      alert('Missing sourceRequestId');
+      return;
+    }
+
+    // ✅ only open popup — no API call here
+    setPayOpen(true);
+  }
+
+  async function confirmPay50() {
+    if (!sourceRequestId) return;
+
+    setLoading(true);
+    try {
+      // ✅ ONLY NOW we create the repeat request + mark as paid partially
+      const res = await fetch('/api/requests/repeat', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ sourceRequestId })
+      });
+
+      const txt = await res.text();
+      const j = txt ? JSON.parse(txt) : {};
+
+      if (!res.ok) {
+        alert((j as any)?.error ?? 'Action failed');
+        return;
+      }
+
+      // If expired -> backend creates NEW request and tells us to go pending
+      if ((j as any)?.mode === 'NEW_REQUEST') {
+        alert(
+          locale === 'ka'
+            ? 'შეთავაზებას გაუვიდა ვადა. გაგზავნილია ახალი მოთხოვნა.'
+            : 'The offer has expired. A new request was sent.'
+        );
+        window.location.href = `/${locale}/mypage?tab=pending`;
+        return;
+      }
+
+      // Fresh -> paid partially + in progress
+      setPayOpen(false);
+      window.location.href = `/${locale}/mypage?tab=inProgress`;
+    } catch (err: any) {
+      alert(err?.message ?? 'Network error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const saved = originalPrice != null ? Math.max(0, originalPrice - linkyPrice) : null;
+
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div className="w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
+        <Card className="p-5">
+          <div className="relative h-64 w-full rounded-xl bg-border">
+            {imageUrl ? (
+              <Image src={imageUrl} alt={title} fill className="object-contain" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-sm text-muted">
+                {locale === 'ka' ? 'ფოტო არ არის' : 'No image'}
+              </div>
+            )}
+          </div>
+
+          <div className="mt-4 text-lg font-black">{title}</div>
+
+          <div className="mt-3 space-y-1 text-sm">
+            <div className="text-muted">
+              {locale === 'ka' ? 'საქართველოს ფასი:' : 'Local price:'}{' '}
+              {originalPrice != null ? `${originalPrice.toFixed(2)} ${currency}` : '—'}
+            </div>
+
+            <div className="font-semibold text-success">
+              Linky: {linkyPrice.toFixed(2)} {currency}
+            </div>
+
+            {saved != null ? (
+              <div className="font-semibold text-yellow-600">
+                {locale === 'ka' ? 'დაზოგილია' : 'Saved'} {saved.toFixed(2)} {currency}
+              </div>
+            ) : null}
+
+            <div className="pt-2 text-xs text-muted">
+              {locale === 'ka' ? `ჩამოსვლის ვადა: ${etaDays} დღე` : `Delivery ETA: ${etaDays} days`}
+            </div>
+          </div>
+
+          <div className="mt-6 flex justify-end gap-2">
+            <Button variant="secondary" onClick={onClose} disabled={loading}>
+              {locale === 'ka' ? 'დახურვა' : 'Close'}
+            </Button>
+
+            <Button
+              onClick={openPayPreview}
+              className="bg-accent text-black hover:bg-accent/90"
+              disabled={loading}
+            >
+              {locale === 'ka' ? 'შეუკვეთე შენც' : 'Order yours'}
+            </Button>
+          </div>
+        </Card>
+
+        {/* ✅ PAY 50 PREVIEW POPUP (NO creation until user clicks Pay) */}
+        {payOpen ? (
+          <div
+            className="fixed inset-0 z-[90] flex items-end justify-center bg-black/50 p-2 md:items-center md:p-6"
+            onClick={() => !loading && setPayOpen(false)}
+          >
+            <div className="w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
+              <Card className="overflow-hidden p-4 md:p-5">
+                <div className="text-lg font-black">
+                  {locale === 'ka' ? 'წინასწარი გადახდის დადასტურება' : 'Confirm prepayment'}
+                </div>
+
+                <div className="mt-1 text-sm text-muted">
+                  {locale === 'ka'
+                    ? 'შეთავაზების დასადასტურებლად საჭიროა 50%-ის გადახდა.'
+                    : 'To accept this offer you need to pay 50% upfront.'}
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <div className="rounded-2xl border border-border bg-card/40 p-3">
+                    <div className="text-xs font-semibold text-muted">
+                      {locale === 'ka' ? 'Linky ფასი' : 'Linky price'}
+                    </div>
+                    <div className="mt-1 text-sm font-semibold">
+                      {pay50Total} {currency}
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-border bg-card/40 p-3">
+                    <div className="text-xs font-semibold text-muted">
+                      {locale === 'ka' ? '50%-ის თანხა' : '50% amount'}
+                    </div>
+                    <div className="mt-1 text-sm font-semibold">
+                      {pay50Amount} {currency}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-3 rounded-2xl border border-border bg-card/30 p-3 text-sm text-muted">
+                  {locale === 'ka'
+                    ? 'ეს არის წინასწარი 50% — შეკვეთის დასადასტურებლად. დარჩენილი თანხა გადაიხდება როცა შეკვეთა ჩამოვა.'
+                    : 'This is a 50% prepayment to confirm the order. The remaining amount is paid after the order arrives.'}
+                </div>
+
+                <div className="mt-4 flex justify-end gap-2">
+                  <Button variant="secondary" disabled={loading} onClick={() => setPayOpen(false)}>
+                    {locale === 'ka' ? 'დახურვა' : 'Close'}
+                  </Button>
+
+                  <Button disabled={loading} onClick={confirmPay50}>
+                    {loading ? (locale === 'ka' ? 'იგზავნება…' : 'Processing…') : locale === 'ka' ? 'გადახდა (დემო)' : 'Pay (demo)'}
+                  </Button>
+                </div>
+              </Card>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}

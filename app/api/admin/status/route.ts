@@ -48,7 +48,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: 'Invalid transition' }, { status: 400 });
   }
 
-  // ✅ HARD BLOCK: cannot complete until final 70% is paid
+  // ✅ HARD BLOCK: cannot complete until final 50% is paid
   if (status === 'COMPLETED' && row.paymentStatus !== 'FULL') {
     return NextResponse.json({ error: 'Waiting for final payment' }, { status: 400 });
   }

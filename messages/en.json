@@ -86,6 +86,7 @@
     "decline": "Decline",
     "pendingResult": "Pending Result",
     "calculating": "Calculating...",
+        "empty": "Nothing here yet",
   "myRequestsTitle": "My requests",
   "myRequestsSubtitle": "Track status, review offers, and make payments.",
 
@@ -112,7 +113,7 @@
 "paymentLabel": "Payment",
 "payment": {
   "NONE": "Not paid",
-  "PARTIAL": "Paid 30%",
+  "PARTIAL": "Paid 50%",
   "FULL": "Fully paid"
 },
 
@@ -121,32 +122,35 @@
 "stepInTransit": "In transit",
 "stepArrived": "Arrived",
 "stepDelivered": "Delivered",
-"finalPaymentLocked": "Final 70% payment will be available after the order arrives.",
-"pay70Locked": "Pay 70% (locked)",
+"finalPaymentLocked": "Final 50% payment will be available after the order arrives.",
 "finalPaymentTitle": "Final payment",
 "fullyPaid": "Fully paid.",
-"needFinalPayment": "Please pay the remaining 70% to proceed.",
+"needFinalPayment": "Please pay the remaining 50% to proceed.",
 "paid": "Paid",
-"pay70Demo": "Pay 70% (demo)",
 "acceptOffer": "Accept offer",
 "declineTitle": "Decline offer",
 "declineSubtitle": "Optionally tell us why you are declining.",
 "declinePh": "Write a short reason…",
 "confirmDecline": "Confirm decline",
-"pay30Subtitle": "To accept this offer you need to pay 30% upfront.",
-"pay30Amount": "30% amount",
 "payDemo": "Pay (demo)",
 "cancelledTitle": "Cancelled",
 "noReason": "No reason provided.",
 "delivered": "Delivered",
 "deliveredSubtitle": "This order is completed.",
+"finalPaymentLocked50": "Final 50% payment will be available after the order arrives.",
+"pay50Locked": "Pay 50% (locked)",
+"pay50Amount": "50% amount",
+"pay50Title": "Confirm prepayment",
+"pay50Subtitle": "To accept this offer you need to pay 50% upfront.",
+"pay50RestDemo": "Pay remaining 50% (demo)",
+
 
 
   "status": {
     "NEW": "Pending",
     "SCOUTING": "Searching",
     "OFFERED": "Offer received",
-    "PAID_PARTIALLY": "Paid 30%",
+    "PAID_PARTIALLY": "Paid 50%",
     "IN_PROGRESS": "In transit",
     "ARRIVED": "Arrived",
     "COMPLETED": "Delivered",
@@ -155,10 +159,6 @@
     "CANCELLED": "Cancelled"
   },
 
-  "pay30Title": "Confirm prepayment",
-  "pay30Body": "To accept this offer you need to pay 30% upfront.",
-  "pay70Title": "Complete payment",
-  "pay70Body": "Your order has arrived. Please pay the remaining 70% to proceed.",
   "payNow": "Pay now",
   "payLater": "Not now",
   "cancelReasonLabel": "Reason (required)",
@@ -247,12 +247,84 @@
 }
 
    },
-   
+   "accepted": {
+  "title": "Orders other customers have already accepted",
+  "subtitle": "A quick look at the latest orders confirmed with a 50% prepayment.",
+  "viewAll": "View all",
+  "orderYours": "Order yours too",
+  "productFallback": "Product",
+  "saved": "Saved {amount} GEL",
+  "byUser": "by {username}",
+  "noImage": "No image",
+
+  "allTitle": "Accepted orders",
+  "allSubtitle": "Browse all orders that customers confirmed with a 50% prepayment.",
+  "searchPh": "Search by username…",
+  "searchBtn": "Search",
+  "back": "Go back",
+  "clear": "Clear",
+  "emptyTitle": "No results",
+  "emptyBody": "Try a different username or clear the search.",
+
+"offerExpired": "The offer has expired. A new request was sent."
+},
+
+
   "footer": {
-    "terms": "Terms of Service",
-    "privacy": "Privacy Policy",
-    "support": "Contact Support",
-    "about": "About Us",
-    "rights": "All rights reserved."
+    "tagline": "Send a link — we’ll deliver it cheaper, with full transparency",
+    "rights": "All rights reserved.",
+    "close": "Close",
+    "cta": "Send a link",
+    "modalHint": "Clear, concise information. You can edit these texts anytime.",
+    "links": {
+      "terms": "Terms",
+      "privacy": "Privacy",
+      "support": "Support",
+      "about": "About"
+    },
+    "modals": {
+      "terms": {
+        "title": "Terms & Conditions",
+        "body": [
+          "Linky.ge is a service where users submit a product link they found in Georgia (pharmacy, store, online shop, etc.).",
+          "After receiving the link, our team reviews the item and typically sends an offer within 3 business days: delivery of the exact same product (often sourced from Europe or the US) with a clear price and estimated delivery time.",
+          "After you receive the offer, you can either accept or decline. If you decline, the request is cancelled and you have no further obligation.",
+          "If you accept, you pay 50% of the offered price upfront. The remaining 50% is paid once the status becomes “Arrived”.",
+          "Order statuses update as the process moves forward: New / Offered / Accepted / In transit / Arrived / Delivered / Cancelled.",
+          "The offered price includes all costs, including courier delivery in Tbilisi. No hidden fees — the amount you see in the offer is the final total."
+        ]
+      },
+      "privacy": {
+        "title": "Privacy Policy",
+        "body": [
+          "Linky.ge processes only the data required to prepare the offer and deliver the order (e.g., contact details and delivery address).",
+          "We use this information to send offers, update order statuses, confirm payments, and arrange delivery.",
+          "We do not sell or share your personal information with third parties for marketing purposes.",
+          "Payments are handled by a secure payment provider. Linky.ge does not store card details (adjust this text if your setup differs).",
+          "You may request data correction or deletion by contacting our support team."
+        ]
+      },
+      "support": {
+        "title": "Support",
+        "body": [
+          "If you have questions about an offer, payment, or status — contact us and we’ll help.",
+          "For faster assistance, include your order number or the submitted product link.",
+          "Typical response hours: 10:00–19:00 (Mon–Sat).",
+          "Contacts (replace with real details):",
+          "Email: support@linky.ge",
+          "Phone: +995 5XX XX XX XX"
+        ]
+      },
+      "about": {
+        "title": "About Linky.ge",
+        "body": [
+          "Linky.ge helps you bring the exact item you find in Georgia.",
+          "You send a link — we source the same product (often from Europe or the US) and send a transparent offer within 3 business days, including price and delivery time.",
+          "You decide whether to accept. If accepted, you pay 50% upfront and the remaining amount once the item arrives.",
+          "Our goal is a simple process, real savings, and a fixed final price with no hidden charges."
+        ]
+      }
+    }
   }
 }
+

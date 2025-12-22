@@ -16,7 +16,6 @@ type Req = {
   productUrl: string;
   status: string;
 
-  // ✅ added (needed for "fully paid" badge)
   paymentStatus: 'NONE' | 'PARTIAL' | 'FULL';
 
   originalPrice: number | null;
@@ -24,12 +23,13 @@ type Req = {
   cancelReason: string | null;
   user: { username: string; email: string; phone: string; fullAddress: string };
   offer: null | {
-    imageUrl: string;
+    imageUrl: string | null; // ✅ now can be null/optional
     linkyPrice: number;
     etaDays: number;
     note: string | null;
     offeredAt: string;
-    adminSourceUrl: string | null; // ✅ admin-only
+    adminSourceUrl: string | null;
+    productTitle?: string | null; // ✅ NEW
   };
 };
 
@@ -49,15 +49,48 @@ function daysLeft(offeredAtISO: string) {
   return Math.max(0, left);
 }
 
-// ✅ tiny helper (no translation file change needed)
 function paidBadgeText(locale: string) {
   return locale === 'ka' ? 'გადახდილია სრულად' : 'Fully paid';
 }
 
+function reqTitle(r: Req) {
+  const t = r.offer?.productTitle?.trim();
+  return t ? t : r.title;
+}
+
+function requiredStar() {
+  return <span className="ml-1 text-danger">*</span>;
+}
+
+function validateOfferForm(locale: string, v: { productTitle: string; geoPrice: string; linkyPrice: string; etaDays: string; adminSourceUrl: string }) {
+  const missing: string[] = [];
+
+  const productTitle = v.productTitle.trim();
+  const geoPrice = v.geoPrice.trim();
+  const linkyPrice = v.linkyPrice.trim();
+  const etaDays = v.etaDays.trim();
+  const adminSourceUrl = v.adminSourceUrl.trim();
+
+  if (!productTitle) missing.push(locale === 'ka' ? 'პროდუქტის სახელი' : 'Product name');
+  if (!geoPrice) missing.push(locale === 'ka' ? 'საქართველოს ფასი' : 'Georgian price');
+  if (!linkyPrice) missing.push(locale === 'ka' ? 'Linky ფასი' : 'Linky price');
+  if (!etaDays) missing.push(locale === 'ka' ? 'დრო (დღე)' : 'ETA (days)');
+  if (!adminSourceUrl) missing.push(locale === 'ka' ? 'სად იპოვა ადმინმა (ლინკი)' : 'Admin source link');
+
+  const geoN = Number(geoPrice);
+  const linkyN = Number(linkyPrice);
+  const etaN = Number(etaDays);
+
+  const invalid: string[] = [];
+  if (geoPrice && !Number.isFinite(geoN)) invalid.push(locale === 'ka' ? 'საქართველოს ფასი' : 'Georgian price');
+  if (linkyPrice && !Number.isFinite(linkyN)) invalid.push(locale === 'ka' ? 'Linky ფასი' : 'Linky price');
+  if (etaDays && (!Number.isFinite(etaN) || etaN <= 0)) invalid.push(locale === 'ka' ? 'დრო (დღე)' : 'ETA (days)');
+
+  return { missing, invalid };
+}
+
 export function AdminPanel({ locale, tab, requests }: { locale: string; tab: string; requests: Req[] }) {
   const t = useTranslations('admin');
-
-  // ✅ needed ONLY to show loader while any transition is pending
   const [isPending] = useTransition();
 
   const tabs: { key: TabKey; label: string }[] = [
@@ -148,7 +181,7 @@ export function AdminPanel({ locale, tab, requests }: { locale: string; tab: str
                 <button key={r.id} onClick={() => setOpenId(r.id)} className="w-full text-left hover:bg-card/40">
                   <div className="grid grid-cols-1 gap-2 px-4 py-4 md:grid-cols-[1.2fr_0.9fr_0.7fr_0.8fr_110px] md:items-center md:gap-3 md:py-3">
                     <div>
-                      <div className="font-semibold">{r.title}</div>
+                      <div className="font-semibold">{reqTitle(r)}</div>
                       <div className="mt-1 text-xs text-muted break-all md:hidden">{r.productUrl}</div>
                       {activeTab === 'offered' && r.offer?.offeredAt ? (
                         <div className="mt-1 text-xs text-muted">{t('offeredLeft', { n: daysLeft(r.offer.offeredAt) })}</div>
@@ -160,7 +193,6 @@ export function AdminPanel({ locale, tab, requests }: { locale: string; tab: str
                       <div className="text-xs text-muted">{r.user.email}</div>
                     </div>
 
-                    {/* ✅ STATUS + (UNDER IT) fully-paid badge */}
                     <div className="text-sm">
                       <div className="flex flex-col gap-1">
                         <span className={badge(r.status)}>{statusLabel(t, r.status)}</span>
@@ -186,9 +218,7 @@ export function AdminPanel({ locale, tab, requests }: { locale: string; tab: str
 
               {list.length === 0 ? <div className="px-4 py-10 text-center text-sm text-muted">{t('empty')}</div> : null}
 
-              {list.length > 15 ? (
-                <div className="px-4 py-3 text-xs text-muted">{t('showing', { n: 15, total: list.length })}</div>
-              ) : null}
+              {list.length > 15 ? <div className="px-4 py-3 text-xs text-muted">{t('showing', { n: 15, total: list.length })}</div> : null}
             </div>
           </Card>
 
@@ -206,7 +236,6 @@ function OrderModal({ locale, tab, req, onClose }: { locale: string; tab: TabKey
   const canEditOffer = tab === 'new';
   const canProgress = tab === 'accepted';
 
-  // ✅ NEW -> SCOUTING when modal opens (once)
   useEffect(() => {
     if (req.status !== 'NEW') return;
     fetch(`/api/admin/scout`, {
@@ -214,9 +243,9 @@ function OrderModal({ locale, tab, req, onClose }: { locale: string; tab: TabKey
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ requestId: req.id })
     }).catch(() => {});
-    // intentionally no reload — UI can update on next refresh
   }, [locale, req.id, req.status]);
 
+  const [productTitle, setProductTitle] = useState(req.offer?.productTitle ?? '');
   const [geoPrice, setGeoPrice] = useState(req.originalPrice ? String(req.originalPrice) : '');
   const [linkyPrice, setLinkyPrice] = useState(req.offer ? String(req.offer.linkyPrice) : '');
   const [etaDays, setEtaDays] = useState(req.offer ? String(req.offer.etaDays) : '7');
@@ -224,7 +253,8 @@ function OrderModal({ locale, tab, req, onClose }: { locale: string; tab: TabKey
   const [adminSourceUrl, setAdminSourceUrl] = useState(req.offer?.adminSourceUrl ?? '');
   const [file, setFile] = useState<File | null>(null);
 
-  // ✅ show all options but lock invalid ones (prevents "only 1 option" confusion)
+  const [formError, setFormError] = useState<string>('');
+
   const progressOptions = useMemo(() => {
     if (!canProgress) return [];
 
@@ -233,19 +263,16 @@ function OrderModal({ locale, tab, req, onClose }: { locale: string; tab: TabKey
     const canToArrived = status === 'IN_PROGRESS';
     const canToCompleted = status === 'ARRIVED';
 
-    const opts = [
+    return [
       { value: 'IN_PROGRESS' as const, enabled: canToInProgress },
       { value: 'ARRIVED' as const, enabled: canToArrived },
       { value: 'COMPLETED' as const, enabled: canToCompleted }
     ];
-
-    return opts;
   }, [canProgress, req.status]);
 
   const firstEnabled = useMemo(() => progressOptions.find((x) => x.enabled)?.value ?? '', [progressOptions]);
   const [nextStatus, setNextStatus] = useState<(typeof progressOptions)[number]['value'] | ''>(firstEnabled);
 
-  // keep selection valid if req/status changes
   useEffect(() => {
     const stillValid = progressOptions.some((x) => x.value === nextStatus && x.enabled);
     if (!stillValid) setNextStatus(firstEnabled);
@@ -261,20 +288,43 @@ function OrderModal({ locale, tab, req, onClose }: { locale: string; tab: TabKey
   }
 
   async function saveOffer() {
+    setFormError('');
+
+    const v = validateOfferForm(locale, { productTitle, geoPrice, linkyPrice, etaDays, adminSourceUrl });
+
+    if (v.missing.length) {
+      const msg =
+        locale === 'ka'
+          ? `გთხოვ შეავსო სავალდებულო ველები: ${v.missing.join(', ')}`
+          : `Please fill required fields: ${v.missing.join(', ')}`;
+      setFormError(msg);
+      return;
+    }
+
+    if (v.invalid.length) {
+      const msg =
+        locale === 'ka'
+          ? `გთხოვ სწორად შეავსო ველები: ${v.invalid.join(', ')}`
+          : `Please enter valid values: ${v.invalid.join(', ')}`;
+      setFormError(msg);
+      return;
+    }
+
     const fd = new FormData();
     fd.append('requestId', req.id);
-    fd.append('originalPrice', geoPrice);
-    fd.append('linkyPrice', linkyPrice);
-    fd.append('etaDays', etaDays);
-    fd.append('note', note);
-    fd.append('adminSourceUrl', adminSourceUrl);
-    if (file) fd.append('image', file);
+    fd.append('productTitle', productTitle.trim()); // ✅ NEW (required)
+    fd.append('originalPrice', geoPrice.trim());
+    fd.append('linkyPrice', linkyPrice.trim());
+    fd.append('etaDays', etaDays.trim());
+    fd.append('adminSourceUrl', adminSourceUrl.trim()); // ✅ required
+    fd.append('note', note); // optional
+    if (file) fd.append('image', file); // optional
 
     startTransition(async () => {
       const res = await fetch(`/api/admin/offer`, { method: 'POST', body: fd });
       const j = await res.json().catch(() => ({}));
       if (res.ok) window.location.reload();
-      else alert(j?.error ? String(j.error) : JSON.stringify(j, null, 2));
+      else setFormError(j?.error ? String(j.error) : JSON.stringify(j, null, 2));
     });
   }
 
@@ -294,6 +344,7 @@ function OrderModal({ locale, tab, req, onClose }: { locale: string; tab: TabKey
   }
 
   const offerSource = req.offer?.adminSourceUrl?.trim() || '';
+  const displayTitle = req.offer?.productTitle?.trim() ? req.offer!.productTitle!.trim() : req.title;
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/50 p-2 md:items-center md:p-6">
@@ -305,14 +356,11 @@ function OrderModal({ locale, tab, req, onClose }: { locale: string; tab: TabKey
             <div className="min-w-0">
               <div className="text-lg font-black">{t('modal.title')}</div>
 
-              {/* ✅ status line + (UNDER IT) fully-paid badge */}
               <div className="mt-1 text-xs text-muted">
                 <div className="flex flex-col gap-1">
                   <div>
                     {t('modal.status')}: <span className="font-semibold text-fg">{statusLabel(t, req.status)}</span>
-                    {tab === 'offered' && req.offer?.offeredAt ? (
-                      <> • {t('offeredLeft', { n: daysLeft(req.offer.offeredAt) })}</>
-                    ) : null}
+                    {tab === 'offered' && req.offer?.offeredAt ? <> • {t('offeredLeft', { n: daysLeft(req.offer.offeredAt) })}</> : null}
                   </div>
 
                   {req.paymentStatus === 'FULL' ? (
@@ -329,6 +377,7 @@ function OrderModal({ locale, tab, req, onClose }: { locale: string; tab: TabKey
                 href={req.productUrl}
                 target="_blank"
                 className="hidden rounded-full border border-border bg-card/60 px-4 py-2 text-sm font-semibold hover:bg-card/80 md:inline-flex"
+                rel="noreferrer"
               >
                 {t('openLink')}
               </a>
@@ -346,7 +395,6 @@ function OrderModal({ locale, tab, req, onClose }: { locale: string; tab: TabKey
               <InfoRow label={t('user.address')} value={req.user.fullAddress} full />
             </div>
 
-            {/* product link */}
             <div className="mt-4 flex items-center gap-2">
               <div className="min-w-0 flex-1 rounded-2xl border border-border bg-card/40 px-4 py-3">
                 <div className="text-xs font-semibold text-muted">{t('productLink')}</div>
@@ -359,7 +407,6 @@ function OrderModal({ locale, tab, req, onClose }: { locale: string; tab: TabKey
               </Button>
             </div>
 
-            {/* ✅ Cancel reason (already supported) */}
             {req.cancelReason ? (
               <div className="mt-5 rounded-2xl border border-border bg-card/50 p-4">
                 <div className="text-xs font-semibold text-muted">{t('cancelReason')}</div>
@@ -367,17 +414,24 @@ function OrderModal({ locale, tab, req, onClose }: { locale: string; tab: TabKey
               </div>
             ) : null}
 
-            {/* ✅ Offer snapshot (if offer exists) */}
             {req.offer ? (
               <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-[220px_1fr]">
                 <div className="relative h-44 w-full overflow-hidden rounded-2xl border border-border bg-card/40 md:h-44">
-                  {req.offer.imageUrl ? <Image src={req.offer.imageUrl} alt={req.title} fill className="object-cover" /> : null}
+                  {req.offer.imageUrl ? <Image src={req.offer.imageUrl} alt={displayTitle} fill className="object-cover" /> : null}
+                  {!req.offer.imageUrl ? (
+                    <div className="flex h-full w-full items-center justify-center text-xs text-muted">{locale === 'ka' ? 'ფოტო არ არის' : 'No image'}</div>
+                  ) : null}
                 </div>
 
                 <div className="rounded-2xl border border-border bg-card/40 p-4">
                   <div className="text-sm font-bold">{t('offerSnapshot')}</div>
 
                   <div className="mt-2 grid grid-cols-2 gap-3 text-sm">
+                    <div className="col-span-2">
+                      <div className="text-xs font-semibold text-muted">{locale === 'ka' ? 'პროდუქტის სახელი' : 'Product name'}</div>
+                      <div className="mt-1 font-semibold">{req.offer.productTitle?.trim() ? req.offer.productTitle : '—'}</div>
+                    </div>
+
                     <div>
                       <div className="text-xs font-semibold text-muted">{t('offerForm.geoPrice')}</div>
                       <div className="mt-1 font-semibold">
@@ -402,7 +456,6 @@ function OrderModal({ locale, tab, req, onClose }: { locale: string; tab: TabKey
 
                   {req.offer.note ? <div className="mt-3 text-sm text-muted">{req.offer.note}</div> : null}
 
-                  {/* ✅ ALWAYS show adminSourceUrl block (even empty) in ALL tabs */}
                   <div className="mt-4 rounded-2xl border border-border bg-card/30 p-3">
                     <div className="text-xs font-semibold text-muted">{t('offerForm.adminSourceUrl')}</div>
                     <div className="mt-1 flex items-center gap-2">
@@ -424,25 +477,47 @@ function OrderModal({ locale, tab, req, onClose }: { locale: string; tab: TabKey
               </div>
             ) : null}
 
-            {/* FORM only on NEW tab */}
             {canEditOffer ? (
               <div className="mt-6 rounded-2xl border border-border bg-card/30 p-4 md:p-5">
                 <div className="text-lg font-black">{t('offerForm.title')}</div>
                 <div className="mt-1 text-sm text-muted">{t('offerForm.subtitle')}</div>
 
+                {formError ? <div className="mt-3 rounded-2xl border border-danger/30 bg-danger/10 p-3 text-sm text-danger">{formError}</div> : null}
+
                 <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div className="md:col-span-2">
+                    <div className="text-xs font-semibold text-muted">
+                      {locale === 'ka' ? 'პროდუქტის სახელი' : 'Product name'}
+                      {requiredStar()}
+                    </div>
+                    <Input
+                      value={productTitle}
+                      onChange={(e) => setProductTitle(e.target.value)}
+                      placeholder={locale === 'ka' ? 'მაგ: La Roche-Posay Cicaplast Baume B5' : 'e.g. La Roche-Posay Cicaplast Baume B5'}
+                    />
+                  </div>
+
                   <div>
-                    <div className="text-xs font-semibold text-muted">{t('offerForm.geoPrice')}</div>
+                    <div className="text-xs font-semibold text-muted">
+                      {t('offerForm.geoPrice')}
+                      {requiredStar()}
+                    </div>
                     <Input value={geoPrice} onChange={(e) => setGeoPrice(e.target.value)} placeholder="e.g. 2999" />
                   </div>
 
                   <div>
-                    <div className="text-xs font-semibold text-muted">{t('offerForm.linkyPrice')}</div>
+                    <div className="text-xs font-semibold text-muted">
+                      {t('offerForm.linkyPrice')}
+                      {requiredStar()}
+                    </div>
                     <Input value={linkyPrice} onChange={(e) => setLinkyPrice(e.target.value)} placeholder="e.g. 2190" />
                   </div>
 
                   <div>
-                    <div className="text-xs font-semibold text-muted">{t('offerForm.etaDays')}</div>
+                    <div className="text-xs font-semibold text-muted">
+                      {t('offerForm.etaDays')}
+                      {requiredStar()}
+                    </div>
                     <Input value={etaDays} onChange={(e) => setEtaDays(e.target.value)} placeholder="e.g. 7" />
                   </div>
 
@@ -454,20 +529,21 @@ function OrderModal({ locale, tab, req, onClose }: { locale: string; tab: TabKey
                       accept="image/*"
                       onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                     />
+                    <div className="mt-1 text-xs text-muted">{locale === 'ka' ? 'არასავალდებულო' : 'Optional'}</div>
                   </div>
 
                   <div className="md:col-span-2">
-                    <div className="text-xs font-semibold text-muted">{t('offerForm.adminSourceUrl')}</div>
-                    <Input
-                      value={adminSourceUrl}
-                      onChange={(e) => setAdminSourceUrl(e.target.value)}
-                      placeholder={t('offerForm.adminSourceUrlPh')}
-                    />
+                    <div className="text-xs font-semibold text-muted">
+                      {t('offerForm.adminSourceUrl')}
+                      {requiredStar()}
+                    </div>
+                    <Input value={adminSourceUrl} onChange={(e) => setAdminSourceUrl(e.target.value)} placeholder={t('offerForm.adminSourceUrlPh')} />
                   </div>
 
                   <div className="md:col-span-2">
                     <div className="text-xs font-semibold text-muted">{t('offerForm.note')}</div>
                     <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('offerForm.notePh')} />
+                    <div className="mt-1 text-xs text-muted">{locale === 'ka' ? 'არასავალდებულო' : 'Optional'}</div>
                   </div>
                 </div>
 
@@ -481,7 +557,6 @@ function OrderModal({ locale, tab, req, onClose }: { locale: string; tab: TabKey
               </div>
             ) : null}
 
-            {/* STATUS PROGRESSION only on ACCEPTED tab */}
             {canProgress ? (
               <div className="mt-6 rounded-2xl border border-border bg-card/30 p-4 md:p-5">
                 <div className="text-lg font-black">{t('progress.title')}</div>
@@ -545,14 +620,11 @@ function formatDate(iso: string) {
 }
 
 function badge(status: string) {
-  if (status === 'NEW' || status === 'SCOUTING')
-    return 'inline-flex rounded-full bg-warning/15 px-3 py-1 text-xs font-semibold text-warning';
-  if (status === 'OFFERED')
-    return 'inline-flex rounded-full bg-accent/15 px-3 py-1 text-xs font-semibold text-accent';
+  if (status === 'NEW' || status === 'SCOUTING') return 'inline-flex rounded-full bg-warning/15 px-3 py-1 text-xs font-semibold text-warning';
+  if (status === 'OFFERED') return 'inline-flex rounded-full bg-accent/15 px-3 py-1 text-xs font-semibold text-accent';
   if (status === 'ACCEPTED' || status === 'PAID_PARTIALLY' || status === 'IN_PROGRESS' || status === 'ARRIVED')
     return 'inline-flex rounded-full bg-success/15 px-3 py-1 text-xs font-semibold text-success';
-  if (status === 'COMPLETED')
-    return 'inline-flex rounded-full bg-success/15 px-3 py-1 text-xs font-semibold text-success';
+  if (status === 'COMPLETED') return 'inline-flex rounded-full bg-success/15 px-3 py-1 text-xs font-semibold text-success';
   return 'inline-flex rounded-full bg-card px-3 py-1 text-xs font-semibold text-muted border border-border';
 }
 

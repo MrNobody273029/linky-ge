@@ -59,7 +59,7 @@ export default async function AdminPage({
     productUrl: r.productUrl,
     status: r.status,
 
-    paymentStatus: r.paymentStatus, // ✅ აი ეს დაამატე
+    paymentStatus: r.paymentStatus,
 
     originalPrice: r.originalPrice ? Number(r.originalPrice) : null,
     currency: r.currency,
@@ -72,12 +72,16 @@ export default async function AdminPage({
     },
     offer: r.offer
       ? {
-          imageUrl: r.offer.imageUrl,
+          // ✅ now nullable/optional
+          imageUrl: r.offer.imageUrl ?? null,
           linkyPrice: Number(r.offer.linkyPrice),
           etaDays: r.offer.etaDays,
           note: r.offer.note ?? null,
           offeredAt: r.offer.createdAt.toISOString(),
-          adminSourceUrl: r.offer.adminSourceUrl ?? null
+          adminSourceUrl: r.offer.adminSourceUrl ?? null,
+
+          // ✅ NEW
+          productTitle: r.offer.productTitle || null
         }
       : null
   }));

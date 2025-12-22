@@ -1,33 +1,56 @@
 export const dynamic = 'force-dynamic';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
-import { Clipboard, Search, ThumbsUp, Shield, CreditCard, Truck, BadgeCheck } from 'lucide-react';
+import {
+  Clipboard,
+  Search,
+  ThumbsUp,
+  Shield,
+  CreditCard,
+  Truck,
+  BadgeCheck
+} from 'lucide-react';
 
 import { Pill, Card, Button } from '@/components/ui';
 import { HeroForm } from '@/components/HeroForm';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import { ProductShowcaseCard } from '@/components/ProductShowcaseCard';
 
-export default async function Page({ params }: { params: { locale: string } }) {
+export default async function Page({
+  params
+}: {
+  params: { locale: string };
+}) {
   const locale = params.locale;
 
   const tHero = await getTranslations({ locale, namespace: 'hero' });
   const tHow = await getTranslations({ locale, namespace: 'how' });
   const tBen = await getTranslations({ locale, namespace: 'benefits' });
   const tCta = await getTranslations({ locale, namespace: 'cta' });
+  const tAcc = await getTranslations({ locale, namespace: 'accepted' });
 
   const user = await getCurrentUser();
 
-  const deals = await prisma.offer.findMany({
-    orderBy: { createdAt: 'desc' },
-    take: 4,
-    include: { request: true }
-  });
+  // ✅ last 4 accepted (50%) orders
+const accepted = await prisma.request.findMany({
+  where: {
+    status: 'PAID_PARTIALLY',
+    paymentStatus: 'PARTIAL',
+    offer: { isNot: null },
+    isRepeat: false // ✅ IMPORTANT
+  },
+  orderBy: { updatedAt: 'desc' },
+  take: 4,
+  include: { offer: true }
+});
+
 
   return (
     <div>
-      {/* Hero */}
+      {/* ================= HERO ================= */}
       <section id="send" className="relative overflow-hidden">
         <div className="container py-16 md:py-24">
           <div className="mx-auto max-w-3xl text-center">
@@ -37,71 +60,72 @@ export default async function Page({ params }: { params: { locale: string } }) {
             </Pill>
 
             <h1 className="mt-6 text-4xl font-black tracking-tight md:text-6xl">
-              {tHero('title1')} <span className="text-muted">{tHero('title2')}</span>
+              {tHero('title1')}{' '}
+              <span className="text-muted">{tHero('title2')}</span>
             </h1>
 
-            <p className="mx-auto mt-4 max-w-2xl text-sm text-muted md:text-base">{tHero('subtitle')}</p>
+            <p className="mx-auto mt-4 max-w-2xl text-sm text-muted md:text-base">
+              {tHero('subtitle')}
+            </p>
 
-            <HeroForm locale={locale} isAuthed={!!user} ctaAuthed={tHero('cta')} ctaGuest={tHero('cta')} />
+            <HeroForm
+              locale={locale}
+              isAuthed={!!user}
+              ctaAuthed={tHero('cta')}
+              ctaGuest={tHero('cta')}
+            />
 
             <p className="mt-3 text-xs text-muted">{tHero('note')}</p>
           </div>
         </div>
       </section>
 
-      {/* Live Deals */}
+      {/* ================= ACCEPTED SHOWCASE ================= */}
       <section id="deals" className="border-t border-border bg-bg/40">
         <div className="container py-12">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold">🔥 Live Deals happening right now</h2>
-            <a href={`/${locale}/mypage`} className="text-sm font-semibold text-muted hover:text-fg">
-              View all
-            </a>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold">{tAcc('title')}</h2>
+              <p className="mt-1 text-xs text-muted">
+                {tAcc('subtitle')}
+              </p>
+            </div>
+
+            <Link
+              href={`/${locale}/accepted`}
+              className="text-sm font-semibold text-muted hover:text-fg"
+            >
+              {tAcc('viewAll')}
+            </Link>
           </div>
 
           <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {deals.map((d) => {
-              const original = d.request.originalPrice ? Number(d.request.originalPrice) : null;
-              const linky = Number(d.linkyPrice);
-              const saved = original ? Math.max(0, original - linky) : 0;
+              {accepted.map((r) => (
+                <ProductShowcaseCard
+                  key={r.id}
+                  locale={locale}
+                  title={r.offer!.productTitle}
+                  imageUrl={r.offer!.imageUrl}
+                  originalPrice={r.originalPrice ? Number(r.originalPrice) : null}
+                  linkyPrice={Number(r.offer!.linkyPrice)}
+                  currency={r.currency}
+                  etaDays={r.offer!.etaDays}
+                  sourceRequestId={r.id} 
+                />
+              ))}
 
-              return (
-                <Card key={d.id} className="p-4">
-                  <div className="relative h-40 w-full overflow-hidden rounded-xl bg-border">
-                    <Image src={d.imageUrl} alt={d.request.titleHint ?? 'Deal'} fill className="object-cover" />
-                    <div className="absolute right-3 top-3 rounded-full bg-card/80 px-2 py-1 text-xs font-semibold text-muted">
-                      🌍
-                    </div>
-                  </div>
-
-                  <div className="mt-4">
-                    <div className="line-clamp-2 text-sm font-bold">{d.request.titleHint ?? 'Product'}</div>
-
-                    <div className="mt-2 flex items-center gap-2 text-xs text-muted">
-                      {original != null ? (
-                        <span className="line-through">{Number(original).toFixed(2)} ₾</span>
-                      ) : (
-                        <span>—</span>
-                      )}
-
-                      <span className="rounded-full bg-success/20 px-2 py-1 font-semibold text-success">
-                        {linky.toFixed(2)} ₾
-                      </span>
-                    </div>
-
-                    <div className="mt-2 text-xs text-muted">Saved {saved.toFixed(2)} GEL</div>
-                  </div>
-                </Card>
-              );
-            })}
           </div>
         </div>
       </section>
 
-      {/* How it works */}
+      {/* ================= HOW IT WORKS ================= */}
       <section id="how" className="container py-16">
-        <h2 className="text-center text-3xl font-black">{tHow('title')}</h2>
-        <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-muted">{tHow('subtitle')}</p>
+        <h2 className="text-center text-3xl font-black">
+          {tHow('title')}
+        </h2>
+        <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-muted">
+          {tHow('subtitle')}
+        </p>
 
         <div className="mt-12 grid grid-cols-1 gap-4 md:grid-cols-3">
           <Card className="p-6 text-center">
@@ -109,7 +133,9 @@ export default async function Page({ params }: { params: { locale: string } }) {
               <Clipboard />
             </div>
             <h3 className="font-bold">{tHow('step1t')}</h3>
-            <p className="mt-2 text-sm text-muted">{tHow('step1d')}</p>
+            <p className="mt-2 text-sm text-muted">
+              {tHow('step1d')}
+            </p>
           </Card>
 
           <Card className="p-6 text-center">
@@ -117,7 +143,9 @@ export default async function Page({ params }: { params: { locale: string } }) {
               <Search />
             </div>
             <h3 className="font-bold">{tHow('step2t')}</h3>
-            <p className="mt-2 text-sm text-muted">{tHow('step2d')}</p>
+            <p className="mt-2 text-sm text-muted">
+              {tHow('step2d')}
+            </p>
           </Card>
 
           <Card className="p-6 text-center">
@@ -125,44 +153,38 @@ export default async function Page({ params }: { params: { locale: string } }) {
               <ThumbsUp />
             </div>
             <h3 className="font-bold">{tHow('step3t')}</h3>
-            <p className="mt-2 text-sm text-muted">{tHow('step3d')}</p>
+            <p className="mt-2 text-sm text-muted">
+              {tHow('step3d')}
+            </p>
           </Card>
         </div>
       </section>
 
-      {/* Benefits */}
+      {/* ================= BENEFITS ================= */}
       <section id="benefits" className="border-t border-border bg-bg/40">
         <div className="container py-16">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Card className="p-6">
-                <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-card shadow-soft">
-                  <Shield />
-                </div>
+                <Shield />
                 <div className="mt-4 font-bold">{tBen('card1t')}</div>
                 <div className="mt-2 text-sm text-muted">{tBen('card1d')}</div>
               </Card>
 
               <Card className="p-6">
-                <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-card shadow-soft">
-                  <CreditCard />
-                </div>
+                <CreditCard />
                 <div className="mt-4 font-bold">{tBen('card2t')}</div>
                 <div className="mt-2 text-sm text-muted">{tBen('card2d')}</div>
               </Card>
 
               <Card className="p-6">
-                <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-card shadow-soft">
-                  <Truck />
-                </div>
+                <Truck />
                 <div className="mt-4 font-bold">{tBen('card3t')}</div>
                 <div className="mt-2 text-sm text-muted">{tBen('card3d')}</div>
               </Card>
 
               <Card className="p-6">
-                <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-card shadow-soft">
-                  <BadgeCheck />
-                </div>
+                <BadgeCheck />
                 <div className="mt-4 font-bold">{tBen('card4t')}</div>
                 <div className="mt-2 text-sm text-muted">{tBen('card4d')}</div>
               </Card>
@@ -174,25 +196,36 @@ export default async function Page({ params }: { params: { locale: string } }) {
               <p className="mt-3 text-sm text-muted">{tBen('body2')}</p>
 
               <div className="mt-6 flex flex-wrap gap-3">
-                <a href={`/${locale}/register`}><Button>{tBen('cta1')}</Button></a>
-                <a href={`/${locale}/login?next=/${locale}/mypage`}><Button variant="secondary">{tBen('cta2')}</Button></a>
+                <Link href={`/${locale}/register`}>
+                  <Button>{tBen('cta1')}</Button>
+                </Link>
+                <Link href={`/${locale}/login?next=/${locale}/mypage`}>
+                  <Button variant="secondary">{tBen('cta2')}</Button>
+                </Link>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Bottom CTA */}
+      {/* ================= BOTTOM CTA ================= */}
       <section className="relative overflow-hidden border-t border-border">
-        <div className="bg-gradient-to-b from-bg to-black/10 dark:to-black/60">
-          <div className="container py-20">
-            <div className="mx-auto max-w-3xl rounded-3xl border border-border bg-card/20 p-8 text-center shadow-glow backdrop-blur">
-              <h2 className="text-3xl font-black md:text-4xl">{tCta('title')}</h2>
-              <p className="mx-auto mt-3 max-w-2xl text-sm text-muted">{tCta('subtitle')}</p>
+        <div className="container py-20">
+          <div className="mx-auto max-w-3xl rounded-3xl border border-border bg-card/20 p-8 text-center">
+            <h2 className="text-3xl font-black md:text-4xl">
+              {tCta('title')}
+            </h2>
+            <p className="mx-auto mt-3 max-w-2xl text-sm text-muted">
+              {tCta('subtitle')}
+            </p>
 
-              <div className="mx-auto mt-8 max-w-2xl">
-                <HeroForm locale={locale} isAuthed={!!user} ctaAuthed={tCta('button')} ctaGuest={tCta('button')} />
-              </div>
+            <div className="mx-auto mt-8 max-w-2xl">
+              <HeroForm
+                locale={locale}
+                isAuthed={!!user}
+                ctaAuthed={tCta('button')}
+                ctaGuest={tCta('button')}
+              />
             </div>
           </div>
         </div>

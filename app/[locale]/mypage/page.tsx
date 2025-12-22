@@ -77,13 +77,17 @@ export default async function MyPage({
   const completedCount = counts.completed;
   const activeCount = requests.filter((r) => !['COMPLETED', 'DECLINED'].includes(r.status)).length;
 
-  const totalSaved = requests.reduce((sum, r) => {
-    if (!r.offer || r.originalPrice == null) return sum;
-    const orig = Number(r.originalPrice);
-    const linky = Number(r.offer.linkyPrice);
-    if (!Number.isFinite(orig) || !Number.isFinite(linky)) return sum;
-    return sum + Math.max(0, orig - linky);
-  }, 0);
+const totalSaved = requests.reduce((sum, r) => {
+  if (r.paymentStatus !== 'FULL') return sum; // ✅ მხოლოდ სრულად გადახდილზე
+  if (!r.offer || r.originalPrice == null) return sum;
+
+  const orig = Number(r.originalPrice);
+  const linky = Number(r.offer.linkyPrice);
+  if (!Number.isFinite(orig) || !Number.isFinite(linky)) return sum;
+
+  return sum + Math.max(0, orig - linky);
+}, 0);
+
 
   const items = filtered.map((r) => ({
     id: r.id,

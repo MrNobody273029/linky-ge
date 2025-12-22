@@ -87,7 +87,7 @@ model Request {
   titleHint     String?
   status        RequestStatus  @default(NEW)
 
-  // ✅ separate payment lifecycle (0% / 30% / 100%)
+  // ✅ separate payment lifecycle (0% / 50% / 100%)
   paymentStatus PaymentStatus  @default(NONE)
 
   originalPrice Decimal?
@@ -97,6 +97,7 @@ model Request {
 
   userId        String
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isRepeat Boolean @default(false) // ✅ admin-only flag
 
   offer         Offer?
 
@@ -113,16 +114,22 @@ model Offer {
   requestId     String   @unique
   request       Request  @relation(fields: [requestId], references: [id], onDelete: Cascade)
 
-  imageUrl      String
+  // ✅ NEW: admin-defined product title (required from UI)
+  productTitle  String   @default("")
+
+  // ✅ make optional (you said photo should NOT be required)
+  imageUrl      String?
+
   linkyPrice    Decimal
   etaDays       Int
   note          String?
 
-  // ✅ admin-only: source link where admin found the product
-  adminSourceUrl String?
+  // ✅ admin-only: required in UI, but keep default for migration safety
+  adminSourceUrl String  @default("")
 
   @@index([createdAt])
 }
+
 
 model Notification {
   id        String   @id @default(cuid())

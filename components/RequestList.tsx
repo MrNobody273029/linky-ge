@@ -26,15 +26,16 @@ function truncate(s: string, n: number) {
   return s.slice(0, n - 1) + '…';
 }
 
-// ✅ helpers for 30/70 calc (UI only)
-function calcPay30(total: number) {
-  return Math.ceil(total * 0.3);
+// ✅ helpers for 50/50 calc (UI only)
+function calcPay50(total: number) {
+  return Math.ceil(total * 0.5);
 }
-function calcPay70(total: number) {
-  // remaining after rounding 30% up (so total always matches)
-  const p30 = calcPay30(total);
-  return Math.max(0, total - p30);
+function calcPayRest(total: number) {
+  // remaining after rounding 50% up (so total always matches)
+  const p50 = calcPay50(total);
+  return Math.max(0, total - p50);
 }
+
 
 export function RequestList({ locale, items }: { locale: string; items: Item[] }) {
   const t = useTranslations('dash');
@@ -43,8 +44,9 @@ export function RequestList({ locale, items }: { locale: string; items: Item[] }
   const [openId, setOpenId] = useState<string | null>(null);
 
   // payment/decline modals
-  const [payOpenFor, setPayOpenFor] = useState<string | null>(null); // 30%
-  const [pay70OpenFor, setPay70OpenFor] = useState<string | null>(null); // ✅ 70%
+const [payOpenFor, setPayOpenFor] = useState<string | null>(null); // ✅ 50%
+const [pay70OpenFor, setPay70OpenFor] = useState<string | null>(null); // ✅ remaining 50%
+
   const [declineOpenFor, setDeclineOpenFor] = useState<string | null>(null);
   const [declineReason, setDeclineReason] = useState('');
 
@@ -87,9 +89,10 @@ export function RequestList({ locale, items }: { locale: string; items: Item[] }
             const linky = hasOffer ? r.offer!.linkyPrice : null;
             const isOpen = openId === r.id;
 
-            const total = r.offer?.linkyPrice ?? 0;
-            const pay30Amount = r.offer ? calcPay30(total) : 0;
-            const pay70Amount = r.offer ? calcPay70(total) : 0;
+                const total = r.offer?.linkyPrice ?? 0;
+                const pay50Amount = r.offer ? calcPay50(total) : 0;
+                const payRestAmount = r.offer ? calcPayRest(total) : 0;
+
 
             return (
               <div key={r.id} className={cn('relative', isOpen ? 'bg-card/20' : '')}>
@@ -125,12 +128,12 @@ export function RequestList({ locale, items }: { locale: string; items: Item[] }
                             ? t('calculating')
                             : '—'}
                       </div>
-                      {hasOffer && r.originalPrice != null ? (
+                      {hasOffer && r.originalPrice != null && r.paymentStatus === 'FULL' ? (
                         <div className="text-xs text-muted">
-                          {t('saved')}: {Math.max(0, (r.originalPrice ?? 0) - r.offer!.linkyPrice)}{' '}
-                          {r.currency ?? 'GEL'}
+                          {t('saved')}: {Math.max(0, (r.originalPrice ?? 0) - r.offer!.linkyPrice)} {r.currency ?? 'GEL'}
                         </div>
                       ) : null}
+
                     </div>
 
                     <div className="md:text-right">
@@ -235,13 +238,13 @@ export function RequestList({ locale, items }: { locale: string; items: Item[] }
                                   setPay70OpenFor(r.id); // ✅ popup, not direct pay
                                 }}
                               >
-                                {r.paymentStatus === 'FULL' ? t('paid') : t('pay70Demo')}
+                            {r.paymentStatus === 'FULL' ? t('paid') : t('pay70Demo')}
                               </Button>
                             </div>
                           </div>
                         ) : null}
 
-                        {/* In progress: show delivery steps + locked 70% */}
+                        {/* In progress: show delivery steps + locked 50% */}
                         {['PAID_PARTIALLY', 'ACCEPTED', 'IN_PROGRESS'].includes(r.status) ? (
                           <div className="rounded-2xl border border-border bg-card/20 p-4">
                             <div className="flex items-center gap-2 text-sm font-bold">
@@ -260,11 +263,11 @@ export function RequestList({ locale, items }: { locale: string; items: Item[] }
                               <Step active={false} icon={<Clock3 className="h-4 w-4" />} label={t('stepDelivered')} />
                             </div>
 
-                            <div className="mt-3 text-xs text-muted">{t('finalPaymentLocked')}</div>
+                            <div className="mt-3 text-xs text-muted">{t('finalPaymentLocked50')}</div>
 
                             <div className="mt-3 flex justify-end">
                               <Button variant="secondary" disabled>
-                                {t('pay70Locked')}
+                                {t('pay50Locked')}
                               </Button>
                             </div>
                           </div>
@@ -300,22 +303,23 @@ export function RequestList({ locale, items }: { locale: string; items: Item[] }
 
                     {/* ✅ PAY 30 MODAL (popup before action) */}
                     {payOpenFor === r.id ? (
-                      <Modal title={t('pay30Title')} subtitle={t('pay30Subtitle')} onClose={() => setPayOpenFor(null)}>
+                      <Modal title={t('pay50Title')} subtitle={t('pay50Subtitle')} onClose={() => setPayOpenFor(null)}>
                         <div className="grid grid-cols-2 gap-3">
                           <Info
                             label={t('linkyPrice')}
                             value={r.offer ? `${r.offer.linkyPrice} ${r.currency ?? 'GEL'}` : '—'}
                           />
                           <Info
-                            label={t('pay30Amount')}
-                            value={r.offer ? `${pay30Amount} ${r.currency ?? 'GEL'}` : '—'}
+                            label={t('pay50Amount')}
+                            value={r.offer ? `${pay50Amount} ${r.currency ?? 'GEL'}` : '—'}
                           />
                         </div>
 
                         <div className="mt-3 rounded-2xl border border-border bg-card/30 p-3 text-sm text-muted">
-                          {locale === 'ka'
-                            ? 'ეს არის წინასწარი 30% — შეკვეთის დასადასტურებლად. დარჩენილი თანხა გადაიხდება როცა შეკვეთა ჩამოვა.'
-                            : 'This is a 30% prepayment to confirm the order. The remaining amount is paid after the order arrives.'}
+                         {locale === 'ka'
+                            ? 'ეს არის წინასწარი 50% — შეკვეთის დასადასტურებლად. დარჩენილი თანხა გადაიხდება როცა შეკვეთა ჩამოვა.'
+                            : 'This is a 50% prepayment to confirm the order. The remaining amount is paid after the order arrives.'}
+
                         </div>
 
                         <div className="mt-4 flex justify-end gap-2">
@@ -326,7 +330,7 @@ export function RequestList({ locale, items }: { locale: string; items: Item[] }
                             disabled={isPending || !r.offer}
                             onClick={() => {
                               setPayOpenFor(null);
-                              act({ id: r.id, action: 'pay30' });
+                            act({ id: r.id, action: 'pay50' });
                             }}
                           >
                             {t('payDemo')}
@@ -344,9 +348,10 @@ export function RequestList({ locale, items }: { locale: string; items: Item[] }
                             value={r.offer ? `${r.offer.linkyPrice} ${r.currency ?? 'GEL'}` : '—'}
                           />
                           <Info
-                            label={locale === 'ka' ? 'დარჩენილი 70%' : 'Remaining 70%'}
-                            value={r.offer ? `${pay70Amount} ${r.currency ?? 'GEL'}` : '—'}
+                            label={locale === 'ka' ? 'დარჩენილი 50%' : 'Remaining 50%'}
+                            value={r.offer ? `${payRestAmount} ${r.currency ?? 'GEL'}` : '—'}
                           />
+
                         </div>
 
                         <div className="mt-3 rounded-2xl border border-border bg-card/30 p-3 text-sm text-muted">
@@ -363,7 +368,7 @@ export function RequestList({ locale, items }: { locale: string; items: Item[] }
                             disabled={isPending || r.paymentStatus === 'FULL' || !r.offer}
                             onClick={() => {
                               setPay70OpenFor(null);
-                              act({ id: r.id, action: 'pay70' });
+                                act({ id: r.id, action: 'pay50_rest' });
                             }}
                           >
                             {t('payNow')}
