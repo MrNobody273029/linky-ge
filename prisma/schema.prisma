@@ -1,0 +1,139 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum RequestStatus {
+  NEW
+  SCOUTING
+  OFFERED
+
+  ACCEPTED
+  PAID_PARTIALLY
+
+  IN_PROGRESS
+  ARRIVED
+
+  COMPLETED
+
+  DECLINED
+  EXPIRED
+  CANCELLED
+}
+
+/**
+ * Payment is a separate state from delivery status.
+ * This prevents "double statuses" and keeps the system bug-proof.
+ */
+enum PaymentStatus {
+  NONE
+  PARTIAL
+  FULL
+}
+
+model User {
+  id           String    @id @default(cuid())
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  role         Role      @default(USER)
+
+  username     String    @unique
+  email        String    @unique
+  passwordHash String
+
+  fullAddress  String
+  phone        String
+
+  requests      Request[]
+  sessions      Session[]
+  notifications Notification[]
+    // ✅ cooldown timestamps per field
+  addressUpdatedAt  DateTime?
+  phoneUpdatedAt    DateTime?
+  passwordUpdatedAt DateTime?
+
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  tokenHash String   @unique
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Request {
+  id            String         @id @default(cuid())
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  productUrl    String
+  titleHint     String?
+  status        RequestStatus  @default(NEW)
+
+  // ✅ separate payment lifecycle (0% / 30% / 100%)
+  paymentStatus PaymentStatus  @default(NONE)
+
+  originalPrice Decimal?
+  currency      String         @default("GEL")
+
+  cancelReason  String?
+
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  offer         Offer?
+
+  @@index([userId])
+  @@index([status])
+  @@index([paymentStatus])
+}
+
+model Offer {
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  requestId     String   @unique
+  request       Request  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  imageUrl      String
+  linkyPrice    Decimal
+  etaDays       Int
+  note          String?
+
+  // ✅ admin-only: source link where admin found the product
+  adminSourceUrl String?
+
+  @@index([createdAt])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  read      Boolean  @default(false)
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title     String
+  body      String
+
+  @@index([userId])
+}

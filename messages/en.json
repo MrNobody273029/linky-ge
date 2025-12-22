@@ -1,0 +1,256 @@
+{
+  "nav": {
+    "how": "How it works",
+    "deals": "Live Deals",
+    "benefits": "Benefits",
+    "login": "Login",
+    "register": "Register",
+    "logout": "Logout",
+    "dashboard": "My Page",
+    "admin": "Admin Panel"
+  },
+  "hero": {
+    "badge": "LIVE BETA",
+    "title1": "Paste a link.",
+    "title2": "We bring it cheaper.",
+    "subtitle": "Send us a product link from any Georgian store. We find the same item abroad and deliver it to your door for significantly less.",
+    "placeholder": "Paste product link here...",
+    "cta": "Get an offer",
+    "note": "No payment required to check price. 100% free quote."
+  },
+  "how": {
+    "title": "How it works",
+    "subtitle": "Getting a cheaper price is simpler than ordering food. Just three steps to save money.",
+    "step1t": "Paste a link",
+    "step1d": "Find a product on any Georgian site and paste the link here.",
+    "step2t": "We Search",
+    "step2d": "Our system finds an item abroad and calculates the full delivery cost.",
+    "step3t": "You Decide",
+    "step3d": "Review our offer. If you like the savings, accept it and we handle the rest."
+  },
+  "benefits": {
+    "title": "Why shop with Linky?",
+    "body1": "We noticed that products in Georgia are often 30–50% more expensive than in Europe or the US.",
+    "body2": "Linky bridges the gap by using smart sourcing to find the original product at its real market price, dealing with customs, and delivering it to you cheaper than local retail.",
+    "cta1": "Start Saving Now",
+    "cta2": "See Demo",
+    "card1t": "Zero Risk",
+    "card1d": "You can decline our offer anytime before payment. No questions asked.",
+    "card2t": "Secure Prepayment",
+    "card2d": "Pay only a fraction upfront. The rest upon delivery to your door.",
+    "card3t": "No Forwarders",
+    "card3d": "Forget complex shipping addresses. We handle logistics end-to-end.",
+    "card4t": "Transparent Pricing",
+    "card4d": "The price we quote is final. No hidden customs fees or taxes later."
+  },
+  "cta": {
+    "title": "Ready to check the real price?",
+    "subtitle": "Don't overpay. Paste your link and let us do the magic.",
+    "button": "Check Price"
+  },
+  "auth": {
+    "loginTitle": "Welcome back",
+    "registerTitle": "Create your account",
+    "email": "Email",
+    "username": "Username",
+    "password": "Password",
+    "confirmPassword": "Confirm password",
+    "address": "Full address",
+    "phone": "Mobile number",
+    "submitLogin": "Login",
+    "submitRegister": "Register",
+    "toRegister": "New here? Create account",
+    "toLogin": "Already have an account? Login"
+  },
+  "dash": {
+    "myRequests": "My Requests",
+    "accountSettings": "Account Settings (MVP)",
+    "paymentMethods": "Payment Methods (MVP)",
+    "address": "Address",
+    "phone": "Phone",
+    "roleAdmin": "Admin",
+    "roleUser": "Premium Member",
+    "productRequest": "Product request",
+    "filtersSoon": "MVP filters coming soon",
+    "totalSaved": "Total saved",
+    "activeRequests": "Active requests",
+    "completed": "Completed",
+    "findBetter": "Find a better price",
+    "active": "Active Requests",
+    "all": "All",
+    "actionRequired": "Action Required",
+    "pending": "Pending",
+    "accept": "Accept Offer",
+    "decline": "Decline",
+    "pendingResult": "Pending Result",
+    "calculating": "Calculating...",
+  "myRequestsTitle": "My requests",
+  "myRequestsSubtitle": "Track status, review offers, and make payments.",
+
+  "tabsPending": "Pending",
+  "tabsOffers": "Offers",
+  "tabsInProgress": "In progress",
+  "tabsCancelled": "Cancelled",
+  "tabsCompleted": "Completed",
+
+  "tableTitle": "Request",
+  "tableStatus": "Status",
+  "tablePrice": "Price",
+  "tableAction": "Action",
+
+  "openRow": "Open",
+  "saved": "Saved",
+"closeRow": "Close",
+"noImage": "No image",
+"openOriginal": "Open original",
+"origPrice": "Original price",
+"linkyPrice": "Linky price",
+"eta": "ETA",
+"days": "days",
+"paymentLabel": "Payment",
+"payment": {
+  "NONE": "Not paid",
+  "PARTIAL": "Paid 30%",
+  "FULL": "Fully paid"
+},
+
+"deliveryProgress": "Delivery progress",
+"stepAccepted": "Accepted",
+"stepInTransit": "In transit",
+"stepArrived": "Arrived",
+"stepDelivered": "Delivered",
+"finalPaymentLocked": "Final 70% payment will be available after the order arrives.",
+"pay70Locked": "Pay 70% (locked)",
+"finalPaymentTitle": "Final payment",
+"fullyPaid": "Fully paid.",
+"needFinalPayment": "Please pay the remaining 70% to proceed.",
+"paid": "Paid",
+"pay70Demo": "Pay 70% (demo)",
+"acceptOffer": "Accept offer",
+"declineTitle": "Decline offer",
+"declineSubtitle": "Optionally tell us why you are declining.",
+"declinePh": "Write a short reason…",
+"confirmDecline": "Confirm decline",
+"pay30Subtitle": "To accept this offer you need to pay 30% upfront.",
+"pay30Amount": "30% amount",
+"payDemo": "Pay (demo)",
+"cancelledTitle": "Cancelled",
+"noReason": "No reason provided.",
+"delivered": "Delivered",
+"deliveredSubtitle": "This order is completed.",
+
+
+  "status": {
+    "NEW": "Pending",
+    "SCOUTING": "Searching",
+    "OFFERED": "Offer received",
+    "PAID_PARTIALLY": "Paid 30%",
+    "IN_PROGRESS": "In transit",
+    "ARRIVED": "Arrived",
+    "COMPLETED": "Delivered",
+    "DECLINED": "Declined",
+    "EXPIRED": "Expired",
+    "CANCELLED": "Cancelled"
+  },
+
+  "pay30Title": "Confirm prepayment",
+  "pay30Body": "To accept this offer you need to pay 30% upfront.",
+  "pay70Title": "Complete payment",
+  "pay70Body": "Your order has arrived. Please pay the remaining 70% to proceed.",
+  "payNow": "Pay now",
+  "payLater": "Not now",
+  "cancelReasonLabel": "Reason (required)",
+  "cancelReasonPh": "Write a short reason…",
+  "submitCancel": "Cancel request",
+  "close": "Close"
+
+  },
+
+  "admin": {
+    "title": "Admin Panel",
+    "subtitle": "Manage orders: create offers, track accepted deliveries, view history.",
+    "hint": "Tip: Click any row to open details in a modal. New Orders allow creating an offer. Other tabs are mostly view-only.",
+    "listSubtitle": "Compact list view (up to 15 per page). Click a row to open.",
+    "count": "{n} items",
+    "open": "Open",
+    "close": "Close",
+    "empty": "Nothing here yet.",
+    "showing": "Showing {n} of {total}",
+    "openLink": "Open product link",
+    "productLink": "Product link",
+    "offerSnapshot": "Offer snapshot",
+    "offeredAt": "Offered at",
+    "offeredLeft": "{n} days left",
+    "cancelReason": "Cancel reason",
+    "readOnly": "View-only in this tab. No edits allowed here.",
+"tabs": {
+  "new": "New Orders",
+  "offered": "Sent Offers",
+  "accepted": "Accepted / In progress",
+  "completed": "Completed",
+  "cancelled": "Cancelled"
+},
+"copy": "Copy",
+"copied": "Copied",
+"table": {
+  "title": "Order",
+  "user": "Customer",
+  "status": "Status",
+  "time": "Created",
+  "action": "Action"
+},
+"modal": {
+  "title": "Order details",
+  "status": "Status"
+},
+"user": {
+  "username": "Username",
+  "email": "Email",
+  "phone": "Phone",
+  "address": "Address"
+},
+"offerForm": {
+  "title": "Create offer",
+  "subtitle": "Fill Georgian price and Linky price, ETA and upload 1 photo.",
+  "geoPrice": "Georgian price (GEL)",
+  "linkyPrice": "Linky price (GEL)",
+  "etaDays": "ETA (days)",
+  "image": "Image (1)",
+  "note": "Note",
+  "notePh": "Optional note…",
+  "save": "Send offer",
+  "help": "After sending, the offer appears in “Sent Offers” for 7 days. If no response, it expires automatically.",
+  "adminSourceUrl": "Admin source link (hidden from user)",
+  "adminSourceUrlPh": "Paste the link where you found the product…"
+},
+"progress": {
+  "title": "Delivery progress",
+  "subtitle": "Only status updates are allowed here. Offer details cannot be edited.",
+  "next": "Next status",
+  "none": "No actions available",
+  "save": "Update status"
+},
+"status": {
+  "NEW": "NEW",
+  "SCOUTING": "SCOUTING",
+  "OFFERED": "OFFERED",
+  "ACCEPTED": "ACCEPTED",
+  "PAID_PARTIALLY": "PAID (partial)",
+  "IN_PROGRESS": "In transit",
+  "ARRIVED": "Arrived",
+  "COMPLETED": "Completed",
+  "DECLINED": "Declined",
+  "EXPIRED": "Expired",
+  "CANCELLED": "Cancelled"
+}
+
+   },
+   
+  "footer": {
+    "terms": "Terms of Service",
+    "privacy": "Privacy Policy",
+    "support": "Contact Support",
+    "about": "About Us",
+    "rights": "All rights reserved."
+  }
+}

@@ -1,0 +1,59 @@
+'use client';
+
+import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
+import { Input, Button } from '@/components/ui';
+
+export function HeroForm({
+  locale,
+  isAuthed,
+  ctaAuthed,
+  ctaGuest
+}: {
+  locale: string;
+  isAuthed: boolean;
+  ctaAuthed: string;
+  ctaGuest: string;
+}) {
+  const [url, setUrl] = useState('');
+  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
+
+  async function submit() {
+    if (!url.trim()) return;
+    if (!isAuthed) {
+      router.push(`/${locale}/login?next=/${locale}/mypage&prefill=${encodeURIComponent(url)}`);
+      return;
+    }
+    startTransition(async () => {
+      const res = await fetch(`/api/requests`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ productUrl: url })
+      });
+      if (res.ok) {
+        router.push(`/${locale}/mypage`);
+      } else {
+        const j = await res.json().catch(() => ({}));
+        alert(j?.error ?? 'Error creating request');
+      }
+    });
+  }
+
+  return (
+    <div className="mx-auto mt-8 flex w-full max-w-2xl items-center gap-2 rounded-2xl border border-border bg-card/80 p-2 shadow-soft">
+      <div className="flex flex-1 items-center gap-3 rounded-xl bg-card/50 px-3">
+        <span className="text-muted">🔗</span>
+        <Input
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="https://..."
+          className="border-0 bg-transparent px-0 py-3 focus:ring-0"
+        />
+      </div>
+      <Button disabled={isPending} onClick={submit} className="h-12 px-6">
+        {isAuthed ? ctaAuthed : ctaGuest} <span aria-hidden>→</span>
+      </Button>
+    </div>
+  );
+}

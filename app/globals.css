@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design tokens: light */
+:root {
+  --bg: 246 245 238;
+  --fg: 20 20 18;
+  --card: 255 255 255;
+  --border: 228 226 216;
+  --muted: 120 120 110;
+  --accent: 245 224 44;
+  --success: 34 197 94;
+  --warning: 234 179 8;
+}
+
+/* Dark */
+.dark {
+  --bg: 9 14 20;
+  --fg: 235 238 245;
+  --card: 13 20 30;
+  --border: 28 44 64;
+  --muted: 147 164 189;
+  --accent: 59 130 246;
+  --success: 34 197 94;
+  --warning: 234 179 8;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  background: rgb(var(--bg));
+  color: rgb(var(--fg));
+}
+
+::selection {
+  background: rgb(var(--accent) / 0.35);
+}
+
+.container {
+  @apply mx-auto max-w-6xl px-4;
+}
