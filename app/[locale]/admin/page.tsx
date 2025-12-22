@@ -1,4 +1,3 @@
-// app/[locale]/admin/page.tsx
 export const dynamic = 'force-dynamic';
 
 import { redirect } from 'next/navigation';
@@ -15,21 +14,23 @@ function daysAgo(n: number) {
 async function expireOldOffers() {
   const cutoff = daysAgo(7);
 
-  const expiredOffers = await prisma.offer.findMany({
-    where: { createdAt: { lt: cutoff } },
-    select: { requestId: true, request: { select: { status: true } } }
+  // ✅ expire based on offer.updatedAt (same logic as repeat route freshness)
+  // only for requests that are currently OFFERED
+  const expired = await prisma.offer.findMany({
+    where: {
+      updatedAt: { lt: cutoff },
+      request: { status: 'OFFERED' }
+    },
+    select: { requestId: true }
   });
 
-  const ids = expiredOffers
-    .filter((o) => o.request.status === 'OFFERED')
-    .map((o) => o.requestId);
+  const ids = expired.map((o) => o.requestId);
+  if (!ids.length) return;
 
-  if (ids.length) {
-    await prisma.request.updateMany({
-      where: { id: { in: ids }, status: 'OFFERED' },
-      data: { status: 'EXPIRED' }
-    });
-  }
+  await prisma.request.updateMany({
+    where: { id: { in: ids }, status: 'OFFERED' },
+    data: { status: 'EXPIRED' }
+  });
 }
 
 export default async function AdminPage({
@@ -64,23 +65,28 @@ export default async function AdminPage({
     originalPrice: r.originalPrice ? Number(r.originalPrice) : null,
     currency: r.currency,
     cancelReason: r.cancelReason ?? null,
+
+    // ✅ IMPORTANT: pass repeat flag so AdminPanel can show badge + skip scout ping
+    isRepeat: r.isRepeat,
+
     user: {
       username: r.user.username,
       email: r.user.email,
       phone: r.user.phone,
       fullAddress: r.user.fullAddress
     },
+
     offer: r.offer
       ? {
-          // ✅ now nullable/optional
           imageUrl: r.offer.imageUrl ?? null,
           linkyPrice: Number(r.offer.linkyPrice),
           etaDays: r.offer.etaDays,
           note: r.offer.note ?? null,
-          offeredAt: r.offer.createdAt.toISOString(),
-          adminSourceUrl: r.offer.adminSourceUrl ?? null,
 
-          // ✅ NEW
+          // ✅ IMPORTANT: use updatedAt for "offeredAt"/TTL display
+          offeredAt: r.offer.updatedAt.toISOString(),
+
+          adminSourceUrl: r.offer.adminSourceUrl ?? null,
           productTitle: r.offer.productTitle || null
         }
       : null

@@ -11,6 +11,10 @@ function jsonError(message: string, status = 400) {
   return NextResponse.json({ ok: false, error: message }, { status });
 }
 
+function calcOfferAgeDays(offerUpdatedAt: Date) {
+  return (Date.now() - offerUpdatedAt.getTime()) / (1000 * 60 * 60 * 24);
+}
+
 export async function POST(req: Request) {
   try {
     const user = await requireUser();
@@ -29,10 +33,12 @@ export async function POST(req: Request) {
     }
 
     // ✅ freshness based on offer.updatedAt
-    const offerAgeDays = (Date.now() - source.offer.updatedAt.getTime()) / (1000 * 60 * 60 * 24);
+    const offerAgeDays = calcOfferAgeDays(source.offer.updatedAt);
     const isFresh = offerAgeDays <= 7;
 
-    // If expired -> create NEW request (no offer) and exit
+    // ✅ EXPIRED: create NEW request (repeat), BUT prefill offer as DRAFT for admin
+    // NOTE: Request stays NEW so admin sees it under NEW/SCOUTING,
+    // and can just hit "Save offer" (updates status to OFFERED).
     if (!isFresh) {
       const newReq = await prisma.request.create({
         data: {
@@ -44,8 +50,21 @@ export async function POST(req: Request) {
           isRepeat: true,
 
           status: RequestStatus.NEW,
-          paymentStatus: PaymentStatus.NONE
-        }
+          paymentStatus: PaymentStatus.NONE,
+
+          // ✅ draft offer snapshot for admin convenience
+          offer: {
+            create: {
+              productTitle: source.offer.productTitle,
+              imageUrl: source.offer.imageUrl,
+              linkyPrice: source.offer.linkyPrice,
+              etaDays: source.offer.etaDays,
+              note: source.offer.note ?? null,
+              adminSourceUrl: source.offer.adminSourceUrl
+            }
+          }
+        },
+        select: { id: true }
       });
 
       return NextResponse.json({
@@ -55,8 +74,9 @@ export async function POST(req: Request) {
       });
     }
 
-    // ✅ Fresh offer: create repeat request AND mark paid partially immediately
-    const paidReq = await prisma.request.create({
+    // ✅ FRESH: create repeat request as OFFERED + NONE (NO payment yet)
+    // UI will show pay50 popup, and only on PATCH pay50 will it become PAID_PARTIALLY.
+    const offeredReq = await prisma.request.create({
       data: {
         userId: user.id,
         productUrl: source.productUrl,
@@ -65,9 +85,8 @@ export async function POST(req: Request) {
         currency: source.currency,
         isRepeat: true,
 
-        // ✅ immediately becomes "paid partially / in progress bucket"
-        status: RequestStatus.PAID_PARTIALLY,
-        paymentStatus: PaymentStatus.PARTIAL,
+        status: RequestStatus.OFFERED,
+        paymentStatus: PaymentStatus.NONE,
 
         offer: {
           create: {
@@ -85,10 +104,10 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       ok: true,
-      mode: 'PAID_PARTIALLY',
-      requestId: paidReq.id,
-      linkyPrice: paidReq.offer ? Number(paidReq.offer.linkyPrice) : null,
-      currency: paidReq.currency
+      mode: 'SHOW_PAY50',
+      requestId: offeredReq.id,
+      linkyPrice: offeredReq.offer ? Number(offeredReq.offer.linkyPrice) : null,
+      currency: offeredReq.currency
     });
   } catch (e: any) {
     if (e?.message === 'UNAUTHENTICATED') {

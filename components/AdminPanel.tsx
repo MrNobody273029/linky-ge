@@ -9,6 +9,16 @@ import { useTranslations } from 'next-intl';
 
 type TabKey = 'new' | 'offered' | 'accepted' | 'completed' | 'cancelled';
 
+type OfferShape = {
+  imageUrl: string | null;
+  linkyPrice: number;
+  etaDays: number;
+  note: string | null;
+  offeredAt?: string; // optional in template
+  adminSourceUrl: string | null;
+  productTitle?: string | null;
+};
+
 type Req = {
   id: string;
   createdAt: string;
@@ -21,16 +31,21 @@ type Req = {
   originalPrice: number | null;
   currency: string;
   cancelReason: string | null;
+
+  // ✅ NEW: repeat marker
+  isRepeat?: boolean;
+
+  /**
+   * ✅ NEW: draft/template for repeat NEW (expired offer flow)
+   * Backend can send this without changing DB schema (just compute it).
+   * If absent, UI behaves exactly like before.
+   */
+  repeatTemplate?: OfferShape | null;
+
   user: { username: string; email: string; phone: string; fullAddress: string };
-  offer: null | {
-    imageUrl: string | null; // ✅ now can be null/optional
-    linkyPrice: number;
-    etaDays: number;
-    note: string | null;
-    offeredAt: string;
-    adminSourceUrl: string | null;
-    productTitle?: string | null; // ✅ NEW
-  };
+
+  // existing offer (for normal flows)
+  offer: null | OfferShape;
 };
 
 function inTab(r: Req, tab: TabKey) {
@@ -54,15 +69,19 @@ function paidBadgeText(locale: string) {
 }
 
 function reqTitle(r: Req) {
-  const t = r.offer?.productTitle?.trim();
+  const t = (r.offer?.productTitle ?? '').trim();
   return t ? t : r.title;
 }
+
 
 function requiredStar() {
   return <span className="ml-1 text-danger">*</span>;
 }
 
-function validateOfferForm(locale: string, v: { productTitle: string; geoPrice: string; linkyPrice: string; etaDays: string; adminSourceUrl: string }) {
+function validateOfferForm(
+  locale: string,
+  v: { productTitle: string; geoPrice: string; linkyPrice: string; etaDays: string; adminSourceUrl: string }
+) {
   const missing: string[] = [];
 
   const productTitle = v.productTitle.trim();
@@ -87,6 +106,21 @@ function validateOfferForm(locale: string, v: { productTitle: string; geoPrice: 
   if (etaDays && (!Number.isFinite(etaN) || etaN <= 0)) invalid.push(locale === 'ka' ? 'დრო (დღე)' : 'ETA (days)');
 
   return { missing, invalid };
+}
+
+function isRepeatNew(r: Req, tab: TabKey) {
+  // ✅ only show repeat marker where it matters (NEW/SCOUTING area)
+  return !!r.isRepeat && tab === 'new' && (r.status === 'NEW' || r.status === 'SCOUTING');
+}
+
+function repeatBadgeText(locale: string) {
+  return locale === 'ka' ? 'განმეორებითი შეკვეთა' : 'Repeat order';
+}
+
+function repeatHintText(locale: string) {
+  return locale === 'ka'
+    ? 'ეს მოთხოვნა მოვიდა “შეუკვეთე შენც”-დან. შეთავაზება ჩავსვით როგორც draft — სურვილის შემთხვევაში შეცვალე და მერე გაგზავნე.'
+    : 'This request came from “Order yours”. The offer below is prefilled as a draft — edit if needed and send.';
 }
 
 export function AdminPanel({ locale, tab, requests }: { locale: string; tab: string; requests: Req[] }) {
@@ -182,7 +216,18 @@ export function AdminPanel({ locale, tab, requests }: { locale: string; tab: str
                   <div className="grid grid-cols-1 gap-2 px-4 py-4 md:grid-cols-[1.2fr_0.9fr_0.7fr_0.8fr_110px] md:items-center md:gap-3 md:py-3">
                     <div>
                       <div className="font-semibold">{reqTitle(r)}</div>
+
+                      {/* ✅ repeat label under title (NEW/SCOUTING only) */}
+                      {isRepeatNew(r, activeTab) ? (
+                        <div className="mt-1">
+                          <span className="inline-flex w-fit rounded-full border border-border bg-card/60 px-3 py-1 text-xs font-semibold text-muted">
+                            {repeatBadgeText(locale)}
+                          </span>
+                        </div>
+                      ) : null}
+
                       <div className="mt-1 text-xs text-muted break-all md:hidden">{r.productUrl}</div>
+
                       {activeTab === 'offered' && r.offer?.offeredAt ? (
                         <div className="mt-1 text-xs text-muted">{t('offeredLeft', { n: daysLeft(r.offer.offeredAt) })}</div>
                       ) : null}
@@ -236,22 +281,45 @@ function OrderModal({ locale, tab, req, onClose }: { locale: string; tab: TabKey
   const canEditOffer = tab === 'new';
   const canProgress = tab === 'accepted';
 
+  // ✅ Only scout automatic for truly NEW non-repeat (you may want this)
+  // If repeat NEW came from "Order yours", scouting ping is not necessary (optional)
   useEffect(() => {
     if (req.status !== 'NEW') return;
+    if (req.isRepeat) return; // ✅ prevent noise
     fetch(`/api/admin/scout`, {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ requestId: req.id })
     }).catch(() => {});
-  }, [locale, req.id, req.status]);
+  }, [locale, req.id, req.status, req.isRepeat]);
 
-  const [productTitle, setProductTitle] = useState(req.offer?.productTitle ?? '');
-  const [geoPrice, setGeoPrice] = useState(req.originalPrice ? String(req.originalPrice) : '');
-  const [linkyPrice, setLinkyPrice] = useState(req.offer ? String(req.offer.linkyPrice) : '');
-  const [etaDays, setEtaDays] = useState(req.offer ? String(req.offer.etaDays) : '7');
-  const [note, setNote] = useState(req.offer?.note ?? '');
-  const [adminSourceUrl, setAdminSourceUrl] = useState(req.offer?.adminSourceUrl ?? '');
+  /**
+   * ✅ Draft seed:
+   * - if request already has offer => use it
+   * - else if repeatTemplate exists => use it to prefill form as "draft"
+   * - else empty fields (old behavior)
+   */
+  const seedOffer = (req.offer ?? req.repeatTemplate ?? null) as OfferShape | null;
+
+  // IMPORTANT: useState initializer functions + reset on req.id change
+  const [productTitle, setProductTitle] = useState(() => seedOffer?.productTitle ?? '');
+  const [geoPrice, setGeoPrice] = useState(() => (req.originalPrice ? String(req.originalPrice) : ''));
+  const [linkyPrice, setLinkyPrice] = useState(() => (seedOffer ? String(seedOffer.linkyPrice) : ''));
+  const [etaDays, setEtaDays] = useState(() => (seedOffer ? String(seedOffer.etaDays) : '7'));
+  const [note, setNote] = useState(() => seedOffer?.note ?? '');
+  const [adminSourceUrl, setAdminSourceUrl] = useState(() => seedOffer?.adminSourceUrl ?? '');
   const [file, setFile] = useState<File | null>(null);
+
+  useEffect(() => {
+    const nextSeed = (req.offer ?? req.repeatTemplate ?? null) as OfferShape | null;
+    setProductTitle(nextSeed?.productTitle ?? '');
+    setGeoPrice(req.originalPrice ? String(req.originalPrice) : '');
+    setLinkyPrice(nextSeed ? String(nextSeed.linkyPrice) : '');
+    setEtaDays(nextSeed ? String(nextSeed.etaDays) : '7');
+    setNote(nextSeed?.note ?? '');
+    setAdminSourceUrl(nextSeed?.adminSourceUrl ?? '');
+    setFile(null);
+  }, [req.id, req.offer, req.repeatTemplate, req.originalPrice]);
 
   const [formError, setFormError] = useState<string>('');
 
@@ -312,13 +380,13 @@ function OrderModal({ locale, tab, req, onClose }: { locale: string; tab: TabKey
 
     const fd = new FormData();
     fd.append('requestId', req.id);
-    fd.append('productTitle', productTitle.trim()); // ✅ NEW (required)
+    fd.append('productTitle', productTitle.trim());
     fd.append('originalPrice', geoPrice.trim());
     fd.append('linkyPrice', linkyPrice.trim());
     fd.append('etaDays', etaDays.trim());
-    fd.append('adminSourceUrl', adminSourceUrl.trim()); // ✅ required
-    fd.append('note', note); // optional
-    if (file) fd.append('image', file); // optional
+    fd.append('adminSourceUrl', adminSourceUrl.trim());
+    fd.append('note', note);
+    if (file) fd.append('image', file);
 
     startTransition(async () => {
       const res = await fetch(`/api/admin/offer`, { method: 'POST', body: fd });
@@ -343,8 +411,10 @@ function OrderModal({ locale, tab, req, onClose }: { locale: string; tab: TabKey
     });
   }
 
-  const offerSource = req.offer?.adminSourceUrl?.trim() || '';
-  const displayTitle = req.offer?.productTitle?.trim() ? req.offer!.productTitle!.trim() : req.title;
+const offerSource = (req.offer?.adminSourceUrl ?? '')?.trim() || '';
+const displayTitle = req.offer?.productTitle?.trim() || req.title;
+
+  const showRepeatInModal = !!req.isRepeat && tab === 'new';
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/50 p-2 md:items-center md:p-6">
@@ -358,9 +428,18 @@ function OrderModal({ locale, tab, req, onClose }: { locale: string; tab: TabKey
 
               <div className="mt-1 text-xs text-muted">
                 <div className="flex flex-col gap-1">
-                  <div>
-                    {t('modal.status')}: <span className="font-semibold text-fg">{statusLabel(t, req.status)}</span>
-                    {tab === 'offered' && req.offer?.offeredAt ? <> • {t('offeredLeft', { n: daysLeft(req.offer.offeredAt) })}</> : null}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div>
+                      {t('modal.status')}: <span className="font-semibold text-fg">{statusLabel(t, req.status)}</span>
+                      {tab === 'offered' && req.offer?.offeredAt ? <> • {t('offeredLeft', { n: daysLeft(req.offer.offeredAt) })}</> : null}
+                    </div>
+
+                    {/* ✅ repeat marker in modal header */}
+                    {showRepeatInModal ? (
+                      <span className="inline-flex w-fit rounded-full border border-border bg-card/60 px-3 py-1 text-xs font-semibold text-muted">
+                        {repeatBadgeText(locale)}
+                      </span>
+                    ) : null}
                   </div>
 
                   {req.paymentStatus === 'FULL' ? (
@@ -407,6 +486,14 @@ function OrderModal({ locale, tab, req, onClose }: { locale: string; tab: TabKey
               </Button>
             </div>
 
+            {/* ✅ repeat explanation (only when we actually have draft template) */}
+{showRepeatInModal && req.offer ? (
+  <div className="mt-5 rounded-2xl border border-border bg-card/30 p-4 text-sm text-muted">
+    {repeatHintText(locale)}
+  </div>
+) : null}
+
+
             {req.cancelReason ? (
               <div className="mt-5 rounded-2xl border border-border bg-card/50 p-4">
                 <div className="text-xs font-semibold text-muted">{t('cancelReason')}</div>
@@ -414,12 +501,15 @@ function OrderModal({ locale, tab, req, onClose }: { locale: string; tab: TabKey
               </div>
             ) : null}
 
+            {/* existing snapshot stays unchanged */}
             {req.offer ? (
               <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-[220px_1fr]">
                 <div className="relative h-44 w-full overflow-hidden rounded-2xl border border-border bg-card/40 md:h-44">
                   {req.offer.imageUrl ? <Image src={req.offer.imageUrl} alt={displayTitle} fill className="object-cover" /> : null}
                   {!req.offer.imageUrl ? (
-                    <div className="flex h-full w-full items-center justify-center text-xs text-muted">{locale === 'ka' ? 'ფოტო არ არის' : 'No image'}</div>
+                    <div className="flex h-full w-full items-center justify-center text-xs text-muted">
+                      {locale === 'ka' ? 'ფოტო არ არის' : 'No image'}
+                    </div>
                   ) : null}
                 </div>
 
@@ -450,7 +540,7 @@ function OrderModal({ locale, tab, req, onClose }: { locale: string; tab: TabKey
                     </div>
                     <div>
                       <div className="text-xs font-semibold text-muted">{t('offeredAt')}</div>
-                      <div className="mt-1 font-semibold">{formatDate(req.offer.offeredAt)}</div>
+                      <div className="mt-1 font-semibold">{req.offer.offeredAt ? formatDate(req.offer.offeredAt) : '—'}</div>
                     </div>
                   </div>
 
@@ -477,12 +567,15 @@ function OrderModal({ locale, tab, req, onClose }: { locale: string; tab: TabKey
               </div>
             ) : null}
 
+            {/* ✅ Offer Form stays same, but now it can be prefilled from repeatTemplate */}
             {canEditOffer ? (
               <div className="mt-6 rounded-2xl border border-border bg-card/30 p-4 md:p-5">
                 <div className="text-lg font-black">{t('offerForm.title')}</div>
                 <div className="mt-1 text-sm text-muted">{t('offerForm.subtitle')}</div>
 
-                {formError ? <div className="mt-3 rounded-2xl border border-danger/30 bg-danger/10 p-3 text-sm text-danger">{formError}</div> : null}
+                {formError ? (
+                  <div className="mt-3 rounded-2xl border border-danger/30 bg-danger/10 p-3 text-sm text-danger">{formError}</div>
+                ) : null}
 
                 <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
                   <div className="md:col-span-2">
@@ -537,7 +630,11 @@ function OrderModal({ locale, tab, req, onClose }: { locale: string; tab: TabKey
                       {t('offerForm.adminSourceUrl')}
                       {requiredStar()}
                     </div>
-                    <Input value={adminSourceUrl} onChange={(e) => setAdminSourceUrl(e.target.value)} placeholder={t('offerForm.adminSourceUrlPh')} />
+                    <Input
+                      value={adminSourceUrl}
+                      onChange={(e) => setAdminSourceUrl(e.target.value)}
+                      placeholder={t('offerForm.adminSourceUrlPh')}
+                    />
                   </div>
 
                   <div className="md:col-span-2">
@@ -620,11 +717,14 @@ function formatDate(iso: string) {
 }
 
 function badge(status: string) {
-  if (status === 'NEW' || status === 'SCOUTING') return 'inline-flex rounded-full bg-warning/15 px-3 py-1 text-xs font-semibold text-warning';
-  if (status === 'OFFERED') return 'inline-flex rounded-full bg-accent/15 px-3 py-1 text-xs font-semibold text-accent';
+  if (status === 'NEW' || status === 'SCOUTING')
+    return 'inline-flex rounded-full bg-warning/15 px-3 py-1 text-xs font-semibold text-warning';
+  if (status === 'OFFERED')
+    return 'inline-flex rounded-full bg-accent/15 px-3 py-1 text-xs font-semibold text-accent';
   if (status === 'ACCEPTED' || status === 'PAID_PARTIALLY' || status === 'IN_PROGRESS' || status === 'ARRIVED')
     return 'inline-flex rounded-full bg-success/15 px-3 py-1 text-xs font-semibold text-success';
-  if (status === 'COMPLETED') return 'inline-flex rounded-full bg-success/15 px-3 py-1 text-xs font-semibold text-success';
+  if (status === 'COMPLETED')
+    return 'inline-flex rounded-full bg-success/15 px-3 py-1 text-xs font-semibold text-success';
   return 'inline-flex rounded-full bg-card px-3 py-1 text-xs font-semibold text-muted border border-border';
 }
 
