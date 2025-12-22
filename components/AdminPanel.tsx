@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import Image from 'next/image';
 import { Button, Card, Input, cn } from '@/components/ui';
+import { AppLoader } from '@/components/AppLoader';
 import { useTranslations } from 'next-intl';
 
 type TabKey = 'new' | 'offered' | 'accepted' | 'completed' | 'cancelled';
@@ -56,6 +57,9 @@ function paidBadgeText(locale: string) {
 export function AdminPanel({ locale, tab, requests }: { locale: string; tab: string; requests: Req[] }) {
   const t = useTranslations('admin');
 
+  // ✅ needed ONLY to show loader while any transition is pending
+  const [isPending] = useTransition();
+
   const tabs: { key: TabKey; label: string }[] = [
     { key: 'new', label: t('tabs.new') },
     { key: 'offered', label: t('tabs.offered') },
@@ -80,116 +84,118 @@ export function AdminPanel({ locale, tab, requests }: { locale: string; tab: str
   const openReq = useMemo(() => list.find((x) => x.id === openId) ?? null, [list, openId]);
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr]">
-      {/* Sidebar */}
-      <Card className="p-4 md:p-5">
-        <div className="text-lg font-black">{t('title')}</div>
-        <div className="mt-1 text-sm text-muted">{t('subtitle')}</div>
+    <>
+      {isPending ? <AppLoader /> : null}
 
-        <div className="mt-5 space-y-2">
-          {tabs.map((x) => {
-            const isActive = x.key === activeTab;
-            return (
-              <a
-                key={x.key}
-                href={`/${locale}/admin?tab=${x.key}`}
-                className={cn(
-                  'flex items-center justify-between rounded-xl px-3 py-2 text-sm font-semibold',
-                  isActive ? 'bg-card/70 text-fg border border-border' : 'text-muted hover:bg-card/40'
-                )}
-              >
-                <span>{x.label}</span>
-                <span
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr]">
+        {/* Sidebar */}
+        <Card className="p-4 md:p-5">
+          <div className="text-lg font-black">{t('title')}</div>
+          <div className="mt-1 text-sm text-muted">{t('subtitle')}</div>
+
+          <div className="mt-5 space-y-2">
+            {tabs.map((x) => {
+              const isActive = x.key === activeTab;
+              return (
+                <a
+                  key={x.key}
+                  href={`/${locale}/admin?tab=${x.key}`}
                   className={cn(
-                    'min-w-[28px] rounded-full px-2 py-0.5 text-xs font-bold text-center',
-                    isActive ? 'bg-accent text-black' : 'bg-card/60 text-muted'
+                    'flex items-center justify-between rounded-xl px-3 py-2 text-sm font-semibold',
+                    isActive ? 'bg-card/70 text-fg border border-border' : 'text-muted hover:bg-card/40'
                   )}
                 >
-                  {counts[x.key]}
-                </span>
-              </a>
-            );
-          })}
-        </div>
-
-        <div className="mt-6 rounded-2xl border border-border bg-card/40 p-4 text-sm text-muted">
-          {t('hint')}
-        </div>
-      </Card>
-
-      {/* Main list */}
-      <div className="space-y-4">
-        <Card className="p-4 md:p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="text-lg font-black">{tabs.find((x) => x.key === activeTab)?.label}</div>
-              <div className="mt-1 text-sm text-muted">{t('listSubtitle')}</div>
-            </div>
-            <div className="text-xs text-muted">{t('count', { n: list.length })}</div>
+                  <span>{x.label}</span>
+                  <span
+                    className={cn(
+                      'min-w-[28px] rounded-full px-2 py-0.5 text-xs font-bold text-center',
+                      isActive ? 'bg-accent text-black' : 'bg-card/60 text-muted'
+                    )}
+                  >
+                    {counts[x.key]}
+                  </span>
+                </a>
+              );
+            })}
           </div>
+
+          <div className="mt-6 rounded-2xl border border-border bg-card/40 p-4 text-sm text-muted">{t('hint')}</div>
         </Card>
 
-        <Card className="overflow-hidden">
-          <div className="hidden grid-cols-[1.2fr_0.9fr_0.7fr_0.8fr_110px] gap-3 border-b border-border px-4 py-3 text-xs font-semibold text-muted md:grid">
-            <div>{t('table.title')}</div>
-            <div>{t('table.user')}</div>
-            <div>{t('table.status')}</div>
-            <div>{t('table.time')}</div>
-            <div className="text-right">{t('table.action')}</div>
-          </div>
+        {/* Main list */}
+        <div className="space-y-4">
+          <Card className="p-4 md:p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-lg font-black">{tabs.find((x) => x.key === activeTab)?.label}</div>
+                <div className="mt-1 text-sm text-muted">{t('listSubtitle')}</div>
+              </div>
+              <div className="text-xs text-muted">{t('count', { n: list.length })}</div>
+            </div>
+          </Card>
 
-          <div className="divide-y divide-border">
-            {list.slice(0, 15).map((r) => (
-              <button key={r.id} onClick={() => setOpenId(r.id)} className="w-full text-left hover:bg-card/40">
-                <div className="grid grid-cols-1 gap-2 px-4 py-4 md:grid-cols-[1.2fr_0.9fr_0.7fr_0.8fr_110px] md:items-center md:gap-3 md:py-3">
-                  <div>
-                    <div className="font-semibold">{r.title}</div>
-                    <div className="mt-1 text-xs text-muted break-all md:hidden">{r.productUrl}</div>
-                    {activeTab === 'offered' && r.offer?.offeredAt ? (
-                      <div className="mt-1 text-xs text-muted">{t('offeredLeft', { n: daysLeft(r.offer.offeredAt) })}</div>
-                    ) : null}
-                  </div>
+          <Card className="overflow-hidden">
+            <div className="hidden grid-cols-[1.2fr_0.9fr_0.7fr_0.8fr_110px] gap-3 border-b border-border px-4 py-3 text-xs font-semibold text-muted md:grid">
+              <div>{t('table.title')}</div>
+              <div>{t('table.user')}</div>
+              <div>{t('table.status')}</div>
+              <div>{t('table.time')}</div>
+              <div className="text-right">{t('table.action')}</div>
+            </div>
 
-                  <div className="text-sm">
-                    <div className="font-semibold">{r.user.username}</div>
-                    <div className="text-xs text-muted">{r.user.email}</div>
-                  </div>
-
-                  {/* ✅ STATUS + (UNDER IT) fully-paid badge */}
-                  <div className="text-sm">
-                    <div className="flex flex-col gap-1">
-                      <span className={badge(r.status)}>{statusLabel(t, r.status)}</span>
-
-                      {r.paymentStatus === 'FULL' ? (
-                        <span className="inline-flex w-fit rounded-full bg-success/15 px-3 py-1 text-xs font-semibold text-success">
-                          {paidBadgeText(locale)}
-                        </span>
+            <div className="divide-y divide-border">
+              {list.slice(0, 15).map((r) => (
+                <button key={r.id} onClick={() => setOpenId(r.id)} className="w-full text-left hover:bg-card/40">
+                  <div className="grid grid-cols-1 gap-2 px-4 py-4 md:grid-cols-[1.2fr_0.9fr_0.7fr_0.8fr_110px] md:items-center md:gap-3 md:py-3">
+                    <div>
+                      <div className="font-semibold">{r.title}</div>
+                      <div className="mt-1 text-xs text-muted break-all md:hidden">{r.productUrl}</div>
+                      {activeTab === 'offered' && r.offer?.offeredAt ? (
+                        <div className="mt-1 text-xs text-muted">{t('offeredLeft', { n: daysLeft(r.offer.offeredAt) })}</div>
                       ) : null}
                     </div>
+
+                    <div className="text-sm">
+                      <div className="font-semibold">{r.user.username}</div>
+                      <div className="text-xs text-muted">{r.user.email}</div>
+                    </div>
+
+                    {/* ✅ STATUS + (UNDER IT) fully-paid badge */}
+                    <div className="text-sm">
+                      <div className="flex flex-col gap-1">
+                        <span className={badge(r.status)}>{statusLabel(t, r.status)}</span>
+
+                        {r.paymentStatus === 'FULL' ? (
+                          <span className="inline-flex w-fit rounded-full bg-success/15 px-3 py-1 text-xs font-semibold text-success">
+                            {paidBadgeText(locale)}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="text-sm text-muted">{formatDate(r.createdAt)}</div>
+
+                    <div className="md:text-right">
+                      <span className="inline-flex rounded-full border border-border bg-card/60 px-3 py-1 text-xs font-semibold">
+                        {t('open')}
+                      </span>
+                    </div>
                   </div>
+                </button>
+              ))}
 
-                  <div className="text-sm text-muted">{formatDate(r.createdAt)}</div>
+              {list.length === 0 ? <div className="px-4 py-10 text-center text-sm text-muted">{t('empty')}</div> : null}
 
-                  <div className="md:text-right">
-                    <span className="inline-flex rounded-full border border-border bg-card/60 px-3 py-1 text-xs font-semibold">
-                      {t('open')}
-                    </span>
-                  </div>
-                </div>
-              </button>
-            ))}
+              {list.length > 15 ? (
+                <div className="px-4 py-3 text-xs text-muted">{t('showing', { n: 15, total: list.length })}</div>
+              ) : null}
+            </div>
+          </Card>
 
-            {list.length === 0 ? <div className="px-4 py-10 text-center text-sm text-muted">{t('empty')}</div> : null}
-
-            {list.length > 15 ? (
-              <div className="px-4 py-3 text-xs text-muted">{t('showing', { n: 15, total: list.length })}</div>
-            ) : null}
-          </div>
-        </Card>
-
-        {openReq ? <OrderModal locale={locale} tab={activeTab} req={openReq} onClose={() => setOpenId(null)} /> : null}
+          {openReq ? <OrderModal locale={locale} tab={activeTab} req={openReq} onClose={() => setOpenId(null)} /> : null}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -291,6 +297,8 @@ function OrderModal({ locale, tab, req, onClose }: { locale: string; tab: TabKey
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/50 p-2 md:items-center md:p-6">
+      {isPending ? <AppLoader /> : null}
+
       <div className="w-full max-w-4xl">
         <Card className="overflow-hidden">
           <div className="flex items-center justify-between border-b border-border p-4 md:p-5">
@@ -363,9 +371,7 @@ function OrderModal({ locale, tab, req, onClose }: { locale: string; tab: TabKey
             {req.offer ? (
               <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-[220px_1fr]">
                 <div className="relative h-44 w-full overflow-hidden rounded-2xl border border-border bg-card/40 md:h-44">
-                  {req.offer.imageUrl ? (
-                    <Image src={req.offer.imageUrl} alt={req.title} fill className="object-cover" />
-                  ) : null}
+                  {req.offer.imageUrl ? <Image src={req.offer.imageUrl} alt={req.title} fill className="object-cover" /> : null}
                 </div>
 
                 <div className="rounded-2xl border border-border bg-card/40 p-4">
@@ -504,9 +510,7 @@ function OrderModal({ locale, tab, req, onClose }: { locale: string; tab: TabKey
                   </div>
 
                   <Button
-                    disabled={
-                      isPending || !nextStatus || !progressOptions.some((x) => x.value === nextStatus && x.enabled)
-                    }
+                    disabled={isPending || !nextStatus || !progressOptions.some((x) => x.value === nextStatus && x.enabled)}
                     onClick={progressStatus}
                     className="h-12 px-6"
                   >
@@ -517,9 +521,7 @@ function OrderModal({ locale, tab, req, onClose }: { locale: string; tab: TabKey
             ) : null}
 
             {tab !== 'new' && tab !== 'accepted' ? (
-              <div className="mt-6 rounded-2xl border border-border bg-card/20 p-4 text-sm text-muted">
-                {t('readOnly')}
-              </div>
+              <div className="mt-6 rounded-2xl border border-border bg-card/20 p-4 text-sm text-muted">{t('readOnly')}</div>
             ) : null}
           </div>
         </Card>

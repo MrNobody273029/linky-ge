@@ -3,6 +3,7 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import { Card, Button, Input, cn } from '@/components/ui';
+import { AppLoader } from '@/components/AppLoader';
 
 function daysLeftFrom(lastISO: string | null | undefined) {
   if (!lastISO) return 0;
@@ -85,6 +86,9 @@ export function ProfileCard({
 
   return (
     <>
+      {/* ✅ overlay loader while PATCH is pending */}
+      {isPending ? <AppLoader /> : null}
+
       <Card className="h-fit p-4 md:p-6 relative">
         {/* edit icon */}
         <button
@@ -121,7 +125,10 @@ export function ProfileCard({
       </Card>
 
       {open ? (
-        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/50 p-2 md:items-center md:p-6" onClick={resetAndClose}>
+        <div
+          className="fixed inset-0 z-[80] flex items-end justify-center bg-black/50 p-2 md:items-center md:p-6"
+          onClick={resetAndClose}
+        >
           <div className="w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
             <Card className="overflow-hidden p-4 md:p-5">
               <div className="text-lg font-black">{t('პროფილის რედაქტირება', 'Edit profile')}</div>

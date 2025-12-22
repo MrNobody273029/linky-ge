@@ -7,7 +7,9 @@
     "register": "Register",
     "logout": "Logout",
     "dashboard": "My Page",
-    "admin": "Admin Panel"
+    "admin": "Admin Panel",
+    "send": "Send link"
+
   },
   "hero": {
     "badge": "LIVE BETA",

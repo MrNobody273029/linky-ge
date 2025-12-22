@@ -1,15 +1,17 @@
 export const dynamic = 'force-dynamic';
 
+import Image from 'next/image';
 import { getTranslations } from 'next-intl/server';
+import { Clipboard, Search, ThumbsUp, Shield, CreditCard, Truck, BadgeCheck } from 'lucide-react';
+
 import { Pill, Card, Button } from '@/components/ui';
 import { HeroForm } from '@/components/HeroForm';
 import { prisma } from '@/lib/prisma';
-import Image from 'next/image';
 import { getCurrentUser } from '@/lib/auth';
-import { Clipboard, Search, ThumbsUp, Shield, CreditCard, Truck, BadgeCheck } from 'lucide-react';
 
-export default async function Home({ params }: { params: { locale: string } }) {
-  const { locale } = params;
+export default async function Page({ params }: { params: { locale: string } }) {
+  const locale = params.locale;
+
   const tHero = await getTranslations({ locale, namespace: 'hero' });
   const tHow = await getTranslations({ locale, namespace: 'how' });
   const tBen = await getTranslations({ locale, namespace: 'benefits' });
@@ -26,7 +28,7 @@ export default async function Home({ params }: { params: { locale: string } }) {
   return (
     <div>
       {/* Hero */}
-      <section className="relative overflow-hidden">
+      <section id="send" className="relative overflow-hidden">
         <div className="container py-16 md:py-24">
           <div className="mx-auto max-w-3xl text-center">
             <Pill className="mx-auto w-fit">
@@ -37,14 +39,10 @@ export default async function Home({ params }: { params: { locale: string } }) {
             <h1 className="mt-6 text-4xl font-black tracking-tight md:text-6xl">
               {tHero('title1')} <span className="text-muted">{tHero('title2')}</span>
             </h1>
+
             <p className="mx-auto mt-4 max-w-2xl text-sm text-muted md:text-base">{tHero('subtitle')}</p>
 
-            <HeroForm
-              locale={locale}
-              isAuthed={!!user}
-              ctaAuthed={tHero('cta')}
-              ctaGuest={tHero('cta')}
-            />
+            <HeroForm locale={locale} isAuthed={!!user} ctaAuthed={tHero('cta')} ctaGuest={tHero('cta')} />
 
             <p className="mt-3 text-xs text-muted">{tHero('note')}</p>
           </div>
@@ -63,14 +61,11 @@ export default async function Home({ params }: { params: { locale: string } }) {
 
           <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {deals.map((d) => {
-             const original = d.request.originalPrice
-              ? Number(d.request.originalPrice)
-              : null;
+              const original = d.request.originalPrice ? Number(d.request.originalPrice) : null;
+              const linky = Number(d.linkyPrice);
+              const saved = original ? Math.max(0, original - linky) : 0;
 
-            const linky = Number(d.linkyPrice);
-
-            const saved = original ? Math.max(0, original - linky) : 0;
-                  return (
+              return (
                 <Card key={d.id} className="p-4">
                   <div className="relative h-40 w-full overflow-hidden rounded-xl bg-border">
                     <Image src={d.imageUrl} alt={d.request.titleHint ?? 'Deal'} fill className="object-cover" />
@@ -78,24 +73,23 @@ export default async function Home({ params }: { params: { locale: string } }) {
                       🌍
                     </div>
                   </div>
+
                   <div className="mt-4">
                     <div className="line-clamp-2 text-sm font-bold">{d.request.titleHint ?? 'Product'}</div>
+
                     <div className="mt-2 flex items-center gap-2 text-xs text-muted">
-                      {d.request.originalPrice ? (
-                  <span className="line-through">
-                    {Number(d.request.originalPrice).toFixed(2)} ₾
-                  </span>
-                                        ) : (
+                      {original != null ? (
+                        <span className="line-through">{Number(original).toFixed(2)} ₾</span>
+                      ) : (
                         <span>—</span>
                       )}
-                     <span className="rounded-full bg-success/20 px-2 py-1 font-semibold text-success">
+
+                      <span className="rounded-full bg-success/20 px-2 py-1 font-semibold text-success">
                         {linky.toFixed(2)} ₾
                       </span>
-
                     </div>
-                  <div className="mt-2 text-xs text-muted">
-                    Saved {saved.toFixed(2)} GEL
-                  </div>
+
+                    <div className="mt-2 text-xs text-muted">Saved {saved.toFixed(2)} GEL</div>
                   </div>
                 </Card>
               );
@@ -180,12 +174,8 @@ export default async function Home({ params }: { params: { locale: string } }) {
               <p className="mt-3 text-sm text-muted">{tBen('body2')}</p>
 
               <div className="mt-6 flex flex-wrap gap-3">
-                <a href={`/${locale}/register`}>
-                  <Button>{tBen('cta1')}</Button>
-                </a>
-                <a href={`/${locale}/login?next=/${locale}/mypage`}>
-                  <Button variant="secondary">{tBen('cta2')}</Button>
-                </a>
+                <a href={`/${locale}/register`}><Button>{tBen('cta1')}</Button></a>
+                <a href={`/${locale}/login?next=/${locale}/mypage`}><Button variant="secondary">{tBen('cta2')}</Button></a>
               </div>
             </div>
           </div>
@@ -200,15 +190,8 @@ export default async function Home({ params }: { params: { locale: string } }) {
               <h2 className="text-3xl font-black md:text-4xl">{tCta('title')}</h2>
               <p className="mx-auto mt-3 max-w-2xl text-sm text-muted">{tCta('subtitle')}</p>
 
-              <div className="mx-auto mt-8 flex max-w-2xl items-center gap-2 rounded-2xl border border-border bg-card/30 p-2">
-                <input
-                  className="w-full bg-transparent px-4 py-3 text-sm outline-none"
-                  placeholder={tHero('placeholder')}
-                  readOnly
-                />
-                <a href={`/${locale}/login?next=/${locale}/mypage`}>
-                  <Button className="h-12 px-6">{tCta('button')}</Button>
-                </a>
+              <div className="mx-auto mt-8 max-w-2xl">
+                <HeroForm locale={locale} isAuthed={!!user} ctaAuthed={tCta('button')} ctaGuest={tCta('button')} />
               </div>
             </div>
           </div>

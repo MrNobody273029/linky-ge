@@ -4,6 +4,7 @@
 import { useTranslations } from 'next-intl';
 import { useState, useTransition } from 'react';
 import { Input, Button, Card, cn } from '@/components/ui';
+import { AppLoader } from '@/components/AppLoader';
 
 function isHttpUrl(u: string) {
   try {
@@ -60,6 +61,7 @@ export function QuickRequestBar({
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder="https://..."
+          disabled={isPending}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault();
@@ -79,13 +81,22 @@ export function QuickRequestBar({
   // ✅ default old look
   if (variant === 'card') {
     return (
-      <Card className="p-6">
-        <div className="text-lg font-black">{t('findBetter')}</div>
-        {content}
-      </Card>
+      <>
+        {isPending ? <AppLoader /> : null}
+
+        <Card className="p-6">
+          <div className="text-lg font-black">{t('findBetter')}</div>
+          {content}
+        </Card>
+      </>
     );
   }
 
   // ✅ inline (no Card) for narrow header usage
-  return <div>{content}</div>;
+  return (
+    <>
+      {isPending ? <AppLoader /> : null}
+      <div>{content}</div>
+    </>
+  );
 }
