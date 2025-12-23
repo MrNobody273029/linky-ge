@@ -1,8 +1,7 @@
 {
   "nav": {
-    "how": "How it works",
-    "deals": "Live Deals",
-    "benefits": "Benefits",
+    "how": "Instruction",
+    "deals": "Products",
     "login": "Login",
     "register": "Register",
     "logout": "Logout",
@@ -12,13 +11,12 @@
 
   },
   "hero": {
-    "badge": "LIVE BETA",
-    "title1": "Paste a link.",
-    "title2": "We bring it cheaper.",
-    "subtitle": "Send us a product link from any Georgian store. We find the same item abroad and deliver it to your door for significantly less.",
+    "title1": "Send us the link",
+    "title2": "Get a free offer in the shortest time",
+    "subtitle": "Send us a link to the product from a Georgian website, and we’ll find it on the European market and offer it to you at the best price (free delivery across Georgia).",
     "placeholder": "Paste product link here...",
     "cta": "Get an offer",
-    "note": "No payment required to check price. 100% free quote."
+    "note": "No payment required to check price. 100% free quote"
   },
   "how": {
     "title": "How it works",
@@ -265,8 +263,7 @@
 
    },
    "accepted": {
-  "title": "Orders other customers have already accepted",
-  "subtitle": "A quick look at the latest orders confirmed with a 50% prepayment.",
+  "title": "Offers other customers have already taken advantage of",
   "viewAll": "View all",
   "orderYours": "Order yours too",
   "productFallback": "Product",

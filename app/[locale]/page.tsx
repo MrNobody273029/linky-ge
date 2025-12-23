@@ -35,18 +35,19 @@ export default async function Page({
   const user = await getCurrentUser();
 
   // ✅ last 4 accepted (50%) orders
-const accepted = await prisma.request.findMany({
-  where: {
-    status: 'PAID_PARTIALLY',
-    paymentStatus: 'PARTIAL',
-    offer: { isNot: null },
-    isRepeat: false // ✅ IMPORTANT
-  },
-  orderBy: { updatedAt: 'desc' },
-  take: 4,
-  include: { offer: true }
-});
+  const accepted = await prisma.request.findMany({
+    where: {
+      status: 'PAID_PARTIALLY',
+      paymentStatus: 'PARTIAL',
+      offer: { isNot: null },
+      isRepeat: false // ✅ IMPORTANT
+    },
+    orderBy: { updatedAt: 'desc' },
+    take: 4,
+    include: { offer: true }
+  });
 
+  const saveNowHref = user ? `/${locale}/accepted` : `/${locale}/register`;
 
   return (
     <div>
@@ -54,14 +55,9 @@ const accepted = await prisma.request.findMany({
       <section id="send" className="relative overflow-hidden">
         <div className="container py-16 md:py-24">
           <div className="mx-auto max-w-3xl text-center">
-            <Pill className="mx-auto w-fit">
-              <span className="inline-flex h-2 w-2 rounded-full bg-success" />
-              {tHero('badge')}
-            </Pill>
-
             <h1 className="mt-6 text-4xl font-black tracking-tight md:text-6xl">
-              {tHero('title1')}{' '}
-              <span className="text-muted">{tHero('title2')}</span>
+              {tHero('title1')}
+              <span className="block text-muted">{tHero('title2')}</span>
             </h1>
 
             <p className="mx-auto mt-4 max-w-2xl text-sm text-muted md:text-base">
@@ -86,34 +82,30 @@ const accepted = await prisma.request.findMany({
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-bold">{tAcc('title')}</h2>
-              <p className="mt-1 text-xs text-muted">
-                {tAcc('subtitle')}
-              </p>
             </div>
 
             <Link
               href={`/${locale}/accepted`}
-              className="text-sm font-semibold text-muted hover:text-fg"
+              className="text-sm font-semibold text-muted hover:text-accent hover:underline underline-offset-4"
             >
               {tAcc('viewAll')}
             </Link>
           </div>
 
           <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {accepted.map((r) => (
-                <ProductShowcaseCard
-                  key={r.id}
-                  locale={locale}
-                  title={r.offer!.productTitle}
-                  imageUrl={r.offer!.imageUrl}
-                  originalPrice={r.originalPrice ? Number(r.originalPrice) : null}
-                  linkyPrice={Number(r.offer!.linkyPrice)}
-                  currency={r.currency}
-                  etaDays={r.offer!.etaDays}
-                  sourceRequestId={r.id} 
-                />
-              ))}
-
+            {accepted.map((r) => (
+              <ProductShowcaseCard
+                key={r.id}
+                locale={locale}
+                title={r.offer!.productTitle}
+                imageUrl={r.offer!.imageUrl}
+                originalPrice={r.originalPrice ? Number(r.originalPrice) : null}
+                linkyPrice={Number(r.offer!.linkyPrice)}
+                currency={r.currency}
+                etaDays={r.offer!.etaDays}
+                sourceRequestId={r.id}
+              />
+            ))}
           </div>
         </div>
       </section>
@@ -195,12 +187,10 @@ const accepted = await prisma.request.findMany({
               <p className="mt-4 text-sm text-muted">{tBen('body1')}</p>
               <p className="mt-3 text-sm text-muted">{tBen('body2')}</p>
 
+              {/* ✅ აქ “დემო” ამოვშალეთ. “დაზოგე ახლა” გადადის accepted თუ ავტორიზებულია */}
               <div className="mt-6 flex flex-wrap gap-3">
-                <Link href={`/${locale}/register`}>
+                <Link href={saveNowHref}>
                   <Button>{tBen('cta1')}</Button>
-                </Link>
-                <Link href={`/${locale}/login?next=/${locale}/mypage`}>
-                  <Button variant="secondary">{tBen('cta2')}</Button>
                 </Link>
               </div>
             </div>

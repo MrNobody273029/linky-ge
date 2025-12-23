@@ -24,7 +24,6 @@ export async function NavBar({ locale }: { locale: string }) {
           <Link href={`/${locale}#send`} className="hover:text-fg">{t('send')}</Link>
           <Link href={`/${locale}#how`} className="hover:text-fg">{t('how')}</Link>
           <Link href={`/${locale}#deals`} className="hover:text-fg">{t('deals')}</Link>
-          <Link href={`/${locale}#benefits`} className="hover:text-fg">{t('benefits')}</Link>
         </nav>
 
         <div className="flex items-center gap-2">
