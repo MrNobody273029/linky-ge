@@ -30,6 +30,8 @@ enum RequestStatus {
   DECLINED
   EXPIRED
   CANCELLED
+  NOT_FOUND
+
 }
 
 /**

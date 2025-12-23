@@ -52,18 +52,21 @@ const [pay70OpenFor, setPay70OpenFor] = useState<string | null>(null); // ✅ re
 
   const openReq = useMemo(() => items.find((x) => x.id === openId) ?? null, [items, openId]);
 
-  async function act(body: any) {
-    startTransition(async () => {
-      const res = await fetch(`/api/requests`, {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-      const j = await res.json().catch(() => ({}));
-      if (res.ok) window.location.reload();
-      else alert(j?.error ?? 'Action failed');
+async function act(body: any) {
+  const isAck = body?.action === 'ack_not_found';
+
+  startTransition(async () => {
+    const res = await fetch(isAck ? `/api/requests/ack-not-found` : `/api/requests`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(isAck ? { requestId: body.requestId } : body)
     });
-  }
+    const j = await res.json().catch(() => ({}));
+    if (res.ok) window.location.reload();
+    else alert(j?.error ?? 'Action failed');
+  });
+}
+
 
   function price(n: number | null | undefined, currency?: string) {
     if (n == null || !Number.isFinite(n)) return '—';
@@ -272,6 +275,25 @@ const [pay70OpenFor, setPay70OpenFor] = useState<string | null>(null); // ✅ re
                             </div>
                           </div>
                         ) : null}
+                        {/* NOT_FOUND: show message + acknowledge button */}
+                        {r.status === 'NOT_FOUND' ? (
+                          <div className="rounded-2xl border border-border bg-card/30 p-4">
+                            <div className="text-sm font-bold">{t('notFound.title')}</div>
+                            <div className="mt-2 text-sm text-muted">{t('notFound.body')}</div>
+
+                            <div className="mt-4 flex justify-end">
+                              <Button
+                                disabled={isPending}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  act({ action: 'ack_not_found', requestId: r.id });
+                                }}
+                              >
+                                {t('notFound.ack')}
+                              </Button>
+                            </div>
+                          </div>
+                        ) : null}
 
                         {/* Cancelled/Declined/Expired reason */}
                         {['DECLINED', 'EXPIRED', 'CANCELLED'].includes(r.status) ? (
@@ -424,14 +446,22 @@ const [pay70OpenFor, setPay70OpenFor] = useState<string | null>(null); // ✅ re
 function badgeByStatus(status: string) {
   if (status === 'NEW' || status === 'SCOUTING')
     return 'inline-flex rounded-full bg-warning/15 px-3 py-1 text-xs font-semibold text-warning';
+
   if (status === 'OFFERED')
     return 'inline-flex rounded-full bg-accent/15 px-3 py-1 text-xs font-semibold text-accent';
+
+  if (status === 'NOT_FOUND')
+    return 'inline-flex rounded-full bg-danger/10 px-3 py-1 text-xs font-semibold text-danger border border-danger/20';
+
   if (['ACCEPTED', 'PAID_PARTIALLY', 'IN_PROGRESS', 'ARRIVED'].includes(status))
     return 'inline-flex rounded-full bg-success/15 px-3 py-1 text-xs font-semibold text-success';
+
   if (status === 'COMPLETED')
     return 'inline-flex rounded-full bg-success/15 px-3 py-1 text-xs font-semibold text-success';
+
   return 'inline-flex rounded-full bg-card px-3 py-1 text-xs font-semibold text-muted border border-border';
 }
+
 
 function Info({ label, value }: { label: string; value: string }) {
   return (

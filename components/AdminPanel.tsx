@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import Image from 'next/image';
 import { Button, Card, Input, cn } from '@/components/ui';
+import { RecommendationsModal } from '@/components/RecommendationsModal';
 import { AppLoader } from '@/components/AppLoader';
 import { useTranslations } from 'next-intl';
 
@@ -53,7 +54,7 @@ function inTab(r: Req, tab: TabKey) {
   if (tab === 'offered') return r.status === 'OFFERED';
   if (tab === 'accepted') return ['ACCEPTED', 'PAID_PARTIALLY', 'IN_PROGRESS', 'ARRIVED'].includes(r.status);
   if (tab === 'completed') return r.status === 'COMPLETED';
-  return ['DECLINED', 'EXPIRED', 'CANCELLED'].includes(r.status);
+return ['DECLINED', 'EXPIRED', 'CANCELLED', 'NOT_FOUND'].includes(r.status);
 }
 
 function daysLeft(offeredAtISO: string) {
@@ -322,6 +323,8 @@ function OrderModal({ locale, tab, req, onClose }: { locale: string; tab: TabKey
   }, [req.id, req.offer, req.repeatTemplate, req.originalPrice]);
 
   const [formError, setFormError] = useState<string>('');
+const [notFoundConfirmOpen, setNotFoundConfirmOpen] = useState(false);
+  const [recoOpen, setRecoOpen] = useState(false);
 
   const progressOptions = useMemo(() => {
     if (!canProgress) return [];
@@ -395,6 +398,18 @@ function OrderModal({ locale, tab, req, onClose }: { locale: string; tab: TabKey
       else setFormError(j?.error ? String(j.error) : JSON.stringify(j, null, 2));
     });
   }
+async function markNotFound() {
+  startTransition(async () => {
+    const res = await fetch(`/api/admin/not-found`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ requestId: req.id })
+    });
+    const j = await res.json().catch(() => ({}));
+    if (res.ok) window.location.reload();
+    else alert(j?.error ?? 'Failed');
+  });
+}
 
   async function progressStatus() {
     if (!nextStatus) return;
@@ -460,6 +475,13 @@ const displayTitle = req.offer?.productTitle?.trim() || req.title;
               >
                 {t('openLink')}
               </a>
+              <Button
+              onClick={() => setRecoOpen(true)}
+              className="h-10 rounded-full bg-success px-4 text-sm font-semibold text-white hover:bg-success/90"
+            >
+              {locale === 'ka' ? 'რეკომენდირებული' : 'Recommended'}
+            </Button>
+
               <Button variant="secondary" onClick={onClose}>
                 {t('close')}
               </Button>
@@ -644,11 +666,22 @@ const displayTitle = req.offer?.productTitle?.trim() || req.title;
                   </div>
                 </div>
 
-                <div className="mt-5 flex justify-end">
-                  <Button disabled={isPending} onClick={saveOffer} className="h-12 px-6">
-                    {t('offerForm.save')}
-                  </Button>
-                </div>
+                  <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
+                      <Button
+                      variant="secondary"
+                      disabled={isPending || req.status === 'NOT_FOUND'}
+                      onClick={() => setNotFoundConfirmOpen(true)}
+                      className="h-12 px-6 border border-danger/30 bg-danger/10 text-danger hover:bg-danger/15"
+                    >
+                      {t('offerForm.notFoundBtn')}
+                    </Button>
+
+
+                    <Button disabled={isPending} onClick={saveOffer} className="h-12 px-6">
+                      {t('offerForm.save')}
+                    </Button>
+                  </div>
+
 
                 <p className="mt-3 text-xs text-muted">{t('offerForm.help')}</p>
               </div>
@@ -691,6 +724,45 @@ const displayTitle = req.offer?.productTitle?.trim() || req.title;
                 </div>
               </div>
             ) : null}
+{notFoundConfirmOpen ? (
+  <div
+    className="fixed inset-0 z-[80] flex items-end justify-center bg-black/50 p-2 md:items-center md:p-6"
+    onClick={() => setNotFoundConfirmOpen(false)}
+  >
+    <div className="w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
+      <Card className="overflow-hidden p-4 md:p-5">
+        <div className="text-lg font-black">{t('offerForm.notFoundTitle')}</div>
+        <div className="mt-1 text-sm text-muted">{t('offerForm.notFoundBody')}</div>
+
+        <div className="mt-5 flex justify-end gap-2">
+          <Button variant="secondary" onClick={() => setNotFoundConfirmOpen(false)}>
+            {t('offerForm.notFoundNo')}
+          </Button>
+              <Button
+                disabled={isPending}
+                className="border border-danger/30 bg-danger text-white hover:bg-danger/90"
+                onClick={() => {
+                  setNotFoundConfirmOpen(false);
+                  markNotFound();
+                }}
+              >
+                {t('offerForm.notFoundYes')}
+              </Button>
+
+        </div>
+      </Card>
+    </div>
+  </div>
+) : null}
+
+{recoOpen ? (
+  <RecommendationsModal
+    locale={locale}
+    productUrl={req.productUrl}
+    onClose={() => setRecoOpen(false)}
+  />
+) : null}
+
 
             {tab !== 'new' && tab !== 'accepted' ? (
               <div className="mt-6 rounded-2xl border border-border bg-card/20 p-4 text-sm text-muted">{t('readOnly')}</div>
@@ -725,8 +797,14 @@ function badge(status: string) {
     return 'inline-flex rounded-full bg-success/15 px-3 py-1 text-xs font-semibold text-success';
   if (status === 'COMPLETED')
     return 'inline-flex rounded-full bg-success/15 px-3 py-1 text-xs font-semibold text-success';
+
+  // ✅ add this
+  if (status === 'NOT_FOUND')
+    return 'inline-flex rounded-full bg-danger/10 px-3 py-1 text-xs font-semibold text-danger border border-danger/20';
+
   return 'inline-flex rounded-full bg-card px-3 py-1 text-xs font-semibold text-muted border border-border';
 }
+
 
 function statusLabel(t: any, status: string) {
   const key = `status.${status}`;

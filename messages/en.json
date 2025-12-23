@@ -89,6 +89,13 @@
         "empty": "Nothing here yet",
   "myRequestsTitle": "My requests",
   "myRequestsSubtitle": "Track status, review offers, and make payments.",
+  "NOT_FOUND": "Offer not found",
+  "notFound": {
+  "title": "Offer not found",
+  "body": "We couldn’t find this item abroad at a better price right now. You can send a new request anytime.",
+  "ack": "Got it"
+},
+
 
   "tabsPending": "Pending",
   "tabsOffers": "Offers",
@@ -185,7 +192,9 @@
     "offeredLeft": "{n} days left",
     "cancelReason": "Cancel reason",
     "readOnly": "View-only in this tab. No edits allowed here.",
-"tabs": {
+"NOT_FOUND": "NOT_FOUND",
+
+    "tabs": {
   "new": "New Orders",
   "offered": "Sent Offers",
   "accepted": "Accepted / In progress",
@@ -223,7 +232,13 @@
   "save": "Send offer",
   "help": "After sending, the offer appears in “Sent Offers” for 7 days. If no response, it expires automatically.",
   "adminSourceUrl": "Admin source link (hidden from user)",
-  "adminSourceUrlPh": "Paste the link where you found the product…"
+  "adminSourceUrlPh": "Paste the link where you found the product…",
+  "notFoundBtn": "Offer not found",
+"notFoundTitle": "Confirm",
+"notFoundBody": "Are you sure the offer was not found?",
+"notFoundYes": "Yes",
+"notFoundNo": "Cancel"
+
 },
 "progress": {
   "title": "Delivery progress",
@@ -243,7 +258,9 @@
   "COMPLETED": "Completed",
   "DECLINED": "Declined",
   "EXPIRED": "Expired",
-  "CANCELLED": "Cancelled"
+  "CANCELLED": "Cancelled",
+"NOT_FOUND": "Offer not found"
+
 }
 
    },

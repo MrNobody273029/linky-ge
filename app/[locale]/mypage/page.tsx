@@ -58,7 +58,7 @@ export default async function MyPage({
 
   const counts = {
     pending: requests.filter((r) => r.status === 'NEW' || r.status === 'SCOUTING').length,
-    offers: requests.filter((r) => r.status === 'OFFERED').length,
+    offers: requests.filter((r) => r.status === 'OFFERED' || r.status === 'NOT_FOUND').length,
     inProgress: requests.filter((r) => ['ACCEPTED', 'PAID_PARTIALLY', 'IN_PROGRESS', 'ARRIVED'].includes(r.status))
       .length,
     cancelled: requests.filter((r) => ['DECLINED', 'CANCELLED', 'EXPIRED'].includes(r.status)).length,
@@ -67,7 +67,7 @@ export default async function MyPage({
 
   const filtered = requests.filter((r) => {
     if (tab === 'pending') return r.status === 'NEW' || r.status === 'SCOUTING';
-    if (tab === 'offers') return r.status === 'OFFERED';
+    if (tab === 'offers') return r.status === 'OFFERED' || r.status === 'NOT_FOUND';
     if (tab === 'inProgress') return ['ACCEPTED', 'PAID_PARTIALLY', 'IN_PROGRESS', 'ARRIVED'].includes(r.status);
     if (tab === 'cancelled') return ['DECLINED', 'CANCELLED', 'EXPIRED'].includes(r.status);
     if (tab === 'completed') return r.status === 'COMPLETED';
