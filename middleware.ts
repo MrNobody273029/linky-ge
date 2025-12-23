@@ -5,6 +5,7 @@ export default createMiddleware({
   locales,
   defaultLocale,
   localePrefix: 'as-needed',
+  localeDetection: false, // ✅ this forces defaultLocale instead of browser language
 });
 
 export const config = {
