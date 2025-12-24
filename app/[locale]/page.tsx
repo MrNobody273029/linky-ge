@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 
+import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
@@ -18,6 +19,59 @@ import { HeroForm } from '@/components/HeroForm';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { ProductShowcaseCard } from '@/components/ProductShowcaseCard';
+
+/* =========================
+   SEO METADATA (HOME)
+   - canonical: www.linky.ge
+   - hreflang: ka/en
+   - OG + Twitter
+========================= */
+export async function generateMetadata({
+  params
+}: {
+  params: { locale: string };
+}): Promise<Metadata> {
+  const locale = params.locale;
+
+  // safe fallback (only ka/en supported in your locales.ts)
+  const isEn = locale === 'en';
+  const canonical = isEn ? 'https://www.linky.ge/en' : 'https://www.linky.ge';
+
+  // Use your existing translations (hero namespace) so titles match site language
+  const tHero = await getTranslations({ locale, namespace: 'hero' });
+
+  const title = `Linky.ge — ${tHero('title1')} ${tHero('title2')}`;
+  const description = tHero('subtitle');
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical,
+      languages: {
+        ka: 'https://www.linky.ge',
+        en: 'https://www.linky.ge/en'
+      }
+    },
+    openGraph: {
+      type: 'website',
+      url: canonical,
+      siteName: 'Linky.ge',
+      title,
+      description,
+      locale: isEn ? 'en_US' : 'ka_GE'
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description
+    },
+    robots: {
+      index: true,
+      follow: true
+    }
+  };
+}
 
 export default async function Page({
   params

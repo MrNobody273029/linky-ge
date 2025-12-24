@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { Card, Button } from '@/components/ui';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -22,6 +23,17 @@ type Props = {
 
 function calcPay50(total: number) {
   return Math.ceil(total * 0.5);
+}
+
+function slugify(input: string) {
+  const s = (input || '').trim().toLowerCase();
+  const cleaned = s
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\p{L}\p{N}]+/gu, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+  return (cleaned || 'product').slice(0, 80);
 }
 
 export function ProductShowcaseModal({
@@ -48,6 +60,11 @@ export function ProductShowcaseModal({
 
   const pay50Total = linkyPrice;
   const pay50Amount = useMemo(() => calcPay50(pay50Total), [pay50Total]);
+
+  const productHref = useMemo(() => {
+    const slug = slugify(title);
+    return `/${locale}/accepted/${sourceRequestId}-${encodeURIComponent(slug)}`;
+  }, [locale, sourceRequestId, title]);
 
   function openOrderFlow(e?: React.MouseEvent) {
     e?.preventDefault();
@@ -112,12 +129,21 @@ export function ProductShowcaseModal({
   const saved = originalPrice != null ? Math.max(0, originalPrice - linkyPrice) : null;
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4"
+      onClick={onClose}
+    >
       <div className="w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
         <Card className="p-5">
           <div className="relative h-64 w-full rounded-xl bg-border">
             {imageUrl ? (
-              <Image src={imageUrl} alt={title} fill className="object-contain" />
+              <Image
+                src={imageUrl}
+                alt={title}
+                fill
+                sizes="(max-width: 768px) 100vw, 560px"
+                className="object-contain"
+              />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-sm text-muted">
                 {locale === 'ka' ? 'ფოტო არ არის' : 'No image'}
@@ -126,6 +152,13 @@ export function ProductShowcaseModal({
           </div>
 
           <div className="mt-4 text-lg font-black">{title}</div>
+
+          {/* ✅ SEO/share: real URL with name */}
+          <div className="mt-1 text-xs text-muted">
+            <Link href={productHref} className="underline underline-offset-2">
+              {locale === 'ka' ? 'ლინკის ნახვა/გაზიარება' : 'Open / share link'}
+            </Link>
+          </div>
 
           <div className="mt-3 space-y-1 text-sm">
             <div className="text-muted">

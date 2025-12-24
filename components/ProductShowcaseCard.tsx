@@ -1,8 +1,9 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { Card, Button } from '@/components/ui';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ProductShowcaseModal } from './ProductShowcaseModal';
 
 type Props = {
@@ -21,6 +22,20 @@ type Props = {
   isAuthed?: boolean;
 };
 
+function slugify(input: string) {
+  const s = (input || '').trim().toLowerCase();
+
+  // keep unicode letters (including ka), but remove noisy chars
+  const cleaned = s
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '') // diacritics
+    .replace(/[^\p{L}\p{N}]+/gu, '-') // non letters/numbers -> dash
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+
+  return (cleaned || 'product').slice(0, 80);
+}
+
 export function ProductShowcaseCard({
   locale,
   title,
@@ -36,9 +51,22 @@ export function ProductShowcaseCard({
 
   const saved = originalPrice != null ? Math.max(0, originalPrice - linkyPrice) : null;
 
+  const productHref = useMemo(() => {
+    const slug = slugify(title);
+    // ✅ SEO: stable, unique, crawlable
+    return `/${locale}/accepted/${sourceRequestId}-${encodeURIComponent(slug)}`;
+  }, [locale, sourceRequestId, title]);
+
+  const ariaOpen = locale === 'ka' ? 'პროდუქტის გვერდის გახსნა' : 'Open product page';
+
   return (
     <>
       <Card className="relative flex h-full flex-col p-4">
+        {/* ✅ SEO: crawlable link to a real page (does NOT change your UI logic) */}
+        <Link href={productHref} className="sr-only" aria-label={ariaOpen}>
+          {title}
+        </Link>
+
         {/* CLICK AREA */}
         <button
           type="button"
@@ -48,7 +76,13 @@ export function ProductShowcaseCard({
           {/* IMAGE */}
           <div className="relative h-48 w-full overflow-hidden rounded-xl bg-border">
             {imageUrl ? (
-              <Image src={imageUrl} alt={title} fill className="object-contain" />
+              <Image
+                src={imageUrl}
+                alt={title}
+                fill
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                className="object-contain"
+              />
             ) : (
               <div className="flex h-full items-center justify-center text-xs text-muted">
                 {locale === 'ka' ? 'ფოტო არ არის' : 'No image'}

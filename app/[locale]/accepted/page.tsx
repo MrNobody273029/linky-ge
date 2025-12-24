@@ -7,9 +7,78 @@ import { Button } from '@/components/ui';
 import { ProductShowcaseCard } from '@/components/ProductShowcaseCard';
 import { getCurrentUser } from '@/lib/auth';
 import { AcceptedSearchBar } from '@/components/AcceptedSearchBar';
+import type { Metadata } from 'next';
 
 const PAGE_SIZE = 20;
 
+/* =========================
+   SEO METADATA
+========================= */
+export async function generateMetadata({
+  params,
+  searchParams
+}: {
+  params: { locale: string };
+  searchParams?: { page?: string; q?: string };
+}): Promise<Metadata> {
+  const locale = params.locale;
+  const page = Number(searchParams?.page || 1);
+  const q = (searchParams?.q || '').trim();
+
+  const isKa = locale === 'ka';
+
+  const baseTitle = isKa
+    ? 'ევროპიდან ჩამოტანილი პროდუქტები იაფად'
+    : 'Products delivered from Europe at better prices';
+
+  const title = q
+    ? isKa
+      ? `${q} — ფასების შედარება ევროპიდან | Linky.ge`
+      : `${q} — Price comparison from Europe | Linky.ge`
+    : page > 1
+    ? `${baseTitle} – Page ${page} | Linky.ge`
+    : `${baseTitle} | Linky.ge`;
+
+  const description = isKa
+    ? 'ნახე დადასტურებული შეთავაზებები — ევროპული ორიგინალი პროდუქტები იაფად, ფასის შედარებით და ადგილზე მიტანით საქართველოში.'
+    : 'Browse verified offers: original European products with better prices, full cost included and delivery to Georgia.';
+
+  const canonical =
+    page > 1 || q
+      ? `https://www.linky.ge/${locale}/accepted?${new URLSearchParams({
+          ...(page > 1 ? { page: String(page) } : {}),
+          ...(q ? { q } : {})
+        }).toString()}`
+      : `https://www.linky.ge/${locale}/accepted`;
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical,
+      languages: {
+        ka: 'https://www.linky.ge/accepted',
+        en: 'https://www.linky.ge/en/accepted'
+      }
+    },
+    openGraph: {
+      type: 'website',
+      url: canonical,
+      title,
+      description,
+      siteName: 'Linky.ge'
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description
+    }
+  };
+}
+
+/* =========================
+   PAGE
+========================= */
 export default async function AcceptedPage({
   params,
   searchParams
