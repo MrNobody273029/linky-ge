@@ -22,6 +22,8 @@ type Props = {
   isAuthed?: boolean;
 };
 
+const FALLBACK_IMAGE = '/og/accepted-default.png';
+
 function slugify(input: string) {
   const s = (input || '').trim().toLowerCase();
 
@@ -59,6 +61,9 @@ export function ProductShowcaseCard({
 
   const ariaOpen = locale === 'ka' ? 'პროდუქტის გვერდის გახსნა' : 'Open product page';
 
+  // ✅ always show a real image (fallback if missing)
+  const shownImage = imageUrl || FALLBACK_IMAGE;
+
   return (
     <>
       <Card className="relative flex h-full flex-col p-4">
@@ -68,26 +73,16 @@ export function ProductShowcaseCard({
         </Link>
 
         {/* CLICK AREA */}
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="flex flex-1 flex-col text-left"
-        >
+        <button type="button" onClick={() => setOpen(true)} className="flex flex-1 flex-col text-left">
           {/* IMAGE */}
           <div className="relative h-48 w-full overflow-hidden rounded-xl bg-border">
-            {imageUrl ? (
-              <Image
-                src={imageUrl}
-                alt={title}
-                fill
-                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                className="object-contain"
-              />
-            ) : (
-              <div className="flex h-full items-center justify-center text-xs text-muted">
-                {locale === 'ka' ? 'ფოტო არ არის' : 'No image'}
-              </div>
-            )}
+            <Image
+              src={shownImage}
+              alt={title}
+              fill
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+              className="object-contain"
+            />
           </div>
 
           {/* TITLE */}
@@ -137,7 +132,7 @@ export function ProductShowcaseCard({
         <ProductShowcaseModal
           locale={locale}
           title={title}
-          imageUrl={imageUrl}
+          imageUrl={shownImage} // ✅ pass fallback too
           originalPrice={originalPrice}
           linkyPrice={linkyPrice}
           currency={currency}

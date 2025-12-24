@@ -8,6 +8,7 @@ import type { ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import { CheckCircle2, Clock3, Truck, PackageCheck, XCircle, CreditCard } from 'lucide-react';
 import { AppLoader } from '@/components/AppLoader';
+const DEFAULT_OG_IMAGE = '/og/accepted-default.png';
 
 type Item = {
   id: string;
@@ -151,15 +152,15 @@ async function act(body: any) {
                 {isOpen ? (
                   <div className="border-t border-border bg-card/20 px-4 py-4">
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-[220px_1fr]">
-                      <div className="relative h-44 w-full overflow-hidden rounded-2xl border border-border bg-card/40">
-                        {r.offer?.imageUrl ? (
-                          <Image src={r.offer.imageUrl} alt={r.title} fill className="object-cover" />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center text-sm text-muted">
-                            {t('noImage')}
-                          </div>
-                        )}
-                      </div>
+                    <div className="relative h-44 w-full overflow-hidden rounded-2xl border border-border bg-card/40">
+                      <Image
+                        src={r.offer?.imageUrl || DEFAULT_OG_IMAGE}
+                        alt={r.title}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+
 
                       <div className="space-y-3">
                         <div className="flex flex-wrap items-center gap-2">

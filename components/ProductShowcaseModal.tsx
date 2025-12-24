@@ -21,6 +21,8 @@ type Props = {
   isAuthed?: boolean;
 };
 
+const FALLBACK_IMAGE = '/og/accepted-default.png';
+
 function calcPay50(total: number) {
   return Math.ceil(total * 0.5);
 }
@@ -66,6 +68,9 @@ export function ProductShowcaseModal({
     return `/${locale}/accepted/${sourceRequestId}-${encodeURIComponent(slug)}`;
   }, [locale, sourceRequestId, title]);
 
+  // ✅ always show a real image (fallback if missing)
+  const shownImage = imageUrl || FALLBACK_IMAGE;
+
   function openOrderFlow(e?: React.MouseEvent) {
     e?.preventDefault();
     e?.stopPropagation();
@@ -90,12 +95,12 @@ export function ProductShowcaseModal({
 
     setLoading(true);
     try {
-      // ✅ ONLY NOW we create the repeat request + mark as paid partially
-      const res = await fetch('/api/requests/repeat', {
+        const res = await fetch('/api/requests/repeat', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ sourceRequestId })
+        body: JSON.stringify({ sourceRequestId, action: 'confirm' })
       });
+
 
       const txt = await res.text();
       const j = txt ? JSON.parse(txt) : {};
@@ -105,7 +110,6 @@ export function ProductShowcaseModal({
         return;
       }
 
-      // If expired -> backend creates NEW request and tells us to go pending
       if ((j as any)?.mode === 'NEW_REQUEST') {
         alert(
           locale === 'ka'
@@ -116,7 +120,6 @@ export function ProductShowcaseModal({
         return;
       }
 
-      // Fresh -> paid partially + in progress
       setPayOpen(false);
       window.location.href = `/${locale}/mypage?tab=inProgress`;
     } catch (err: any) {
@@ -129,26 +132,18 @@ export function ProductShowcaseModal({
   const saved = originalPrice != null ? Math.max(0, originalPrice - linkyPrice) : null;
 
   return (
-    <div
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
       <div className="w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
         <Card className="p-5">
           <div className="relative h-64 w-full rounded-xl bg-border">
-            {imageUrl ? (
-              <Image
-                src={imageUrl}
-                alt={title}
-                fill
-                sizes="(max-width: 768px) 100vw, 560px"
-                className="object-contain"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-sm text-muted">
-                {locale === 'ka' ? 'ფოტო არ არის' : 'No image'}
-              </div>
-            )}
+            <Image
+              src={shownImage}
+              alt={title}
+              fill
+              sizes="(max-width: 768px) 100vw, 560px"
+              className="object-contain"
+              priority
+            />
           </div>
 
           <div className="mt-4 text-lg font-black">{title}</div>
@@ -186,11 +181,7 @@ export function ProductShowcaseModal({
               {locale === 'ka' ? 'დახურვა' : 'Close'}
             </Button>
 
-            <Button
-              onClick={openOrderFlow}
-              className="bg-accent text-black hover:bg-accent/90"
-              disabled={loading}
-            >
+            <Button onClick={openOrderFlow} className="bg-accent text-black hover:bg-accent/90" disabled={loading}>
               {locale === 'ka' ? 'შეუკვეთე შენც' : 'Order yours'}
             </Button>
           </div>
@@ -204,9 +195,7 @@ export function ProductShowcaseModal({
           >
             <div className="w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
               <Card className="overflow-hidden p-4 md:p-5">
-                <div className="text-lg font-black">
-                  {locale === 'ka' ? 'ავტორიზაცია საჭიროა' : 'Authorization required'}
-                </div>
+                <div className="text-lg font-black">{locale === 'ka' ? 'ავტორიზაცია საჭიროა' : 'Authorization required'}</div>
 
                 <div className="mt-1 text-sm text-muted">
                   {locale === 'ka'
@@ -222,7 +211,7 @@ export function ProductShowcaseModal({
                   <Button
                     onClick={() => {
                       setAuthOpen(false);
-                      onClose(); // ✅ close parent modal too
+                      onClose();
                       router.push(`/${locale}/register`);
                     }}
                   >
@@ -242,9 +231,7 @@ export function ProductShowcaseModal({
           >
             <div className="w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
               <Card className="overflow-hidden p-4 md:p-5">
-                <div className="text-lg font-black">
-                  {locale === 'ka' ? 'წინასწარი გადახდის დადასტურება' : 'Confirm prepayment'}
-                </div>
+                <div className="text-lg font-black">{locale === 'ka' ? 'წინასწარი გადახდის დადასტურება' : 'Confirm prepayment'}</div>
 
                 <div className="mt-1 text-sm text-muted">
                   {locale === 'ka'
@@ -254,18 +241,14 @@ export function ProductShowcaseModal({
 
                 <div className="mt-4 grid grid-cols-2 gap-3">
                   <div className="rounded-2xl border border-border bg-card/40 p-3">
-                    <div className="text-xs font-semibold text-muted">
-                      {locale === 'ka' ? 'Linky ფასი' : 'Linky price'}
-                    </div>
+                    <div className="text-xs font-semibold text-muted">{locale === 'ka' ? 'Linky ფასი' : 'Linky price'}</div>
                     <div className="mt-1 text-sm font-semibold">
                       {pay50Total} {currency}
                     </div>
                   </div>
 
                   <div className="rounded-2xl border border-border bg-card/40 p-3">
-                    <div className="text-xs font-semibold text-muted">
-                      {locale === 'ka' ? '50%-ის თანხა' : '50% amount'}
-                    </div>
+                    <div className="text-xs font-semibold text-muted">{locale === 'ka' ? '50%-ის თანხა' : '50% amount'}</div>
                     <div className="mt-1 text-sm font-semibold">
                       {pay50Amount} {currency}
                     </div>
@@ -284,13 +267,7 @@ export function ProductShowcaseModal({
                   </Button>
 
                   <Button disabled={loading} onClick={confirmPay50}>
-                    {loading
-                      ? locale === 'ka'
-                        ? 'იგზავნება…'
-                        : 'Processing…'
-                      : locale === 'ka'
-                        ? 'გადახდა (დემო)'
-                        : 'Pay (demo)'}
+                    {loading ? (locale === 'ka' ? 'იგზავნება…' : 'Processing…') : locale === 'ka' ? 'გადახდა (დემო)' : 'Pay (demo)'}
                   </Button>
                 </div>
               </Card>

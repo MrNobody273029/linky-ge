@@ -188,6 +188,8 @@ export default async function ProductAcceptedPage({
 
   const title = row.offer.productTitle;
   const imageUrl = row.offer.imageUrl;
+  const shownImage = imageUrl || '/og/accepted-default.png';
+
   const linkyPrice = Number(row.offer.linkyPrice);
   const currency = row.currency;
   const originalPrice = row.originalPrice != null ? Number(row.originalPrice) : null;
@@ -284,20 +286,15 @@ export default async function ProductAcceptedPage({
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card className="p-4">
           <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-border">
-            {imageUrl ? (
-              <Image
-                src={imageUrl}
-                alt={title}
-                fill
-                sizes="(max-width: 1024px) 100vw, 50vw"
-                className="object-contain"
-                priority
-              />
-            ) : (
-              <div className="flex h-full items-center justify-center text-sm text-muted">
-                {locale === 'ka' ? 'ფოტო არ არის' : 'No image'}
-              </div>
-            )}
+          <Image
+            src={shownImage}
+            alt={title}
+            fill
+            sizes="(max-width: 1024px) 100vw, 50vw"
+            className="object-contain"
+            priority
+          />
+
           </div>
         </Card>
 
