@@ -102,8 +102,9 @@ model Request {
   isRepeat Boolean @default(false) // ✅ admin-only flag
 
   offer         Offer?
+  repeatSourceId String? // ✅ cooldown / dedupe for expired repeats
+  @@index([userId, repeatSourceId])
 
-  @@index([userId])
   @@index([status])
   @@index([paymentStatus])
 }

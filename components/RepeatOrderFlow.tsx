@@ -1,3 +1,4 @@
+// components/RepeatOrderFlow.tsx
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -8,12 +9,6 @@ type Props = {
   locale: string;
   sourceRequestId: string;
   isAuthed: boolean;
-
-  /**
-   * variant:
-   * - "button": renders main CTA button (like on the page)
-   * You can extend later if you want link / icon etc.
-   */
   variant?: 'button';
 };
 
@@ -21,25 +16,20 @@ function calcPay50(total: number) {
   return Math.ceil(total * 0.5);
 }
 
+function t(locale: string, ka: string, en: string) {
+  return locale === 'ka' ? ka : en;
+}
+
 export function RepeatOrderFlow({ locale, sourceRequestId, isAuthed, variant = 'button' }: Props) {
   const router = useRouter();
 
   const [loading, setLoading] = useState(false);
 
-  // ✅ PREVIEW popup (authed)
+  // authed pay preview popup
   const [payOpen, setPayOpen] = useState(false);
 
-  // ✅ Guest popup (not authed)
+  // guest popup
   const [authOpen, setAuthOpen] = useState(false);
-
-  // You said modal uses: pay50Total = linkyPrice
-  // On this page we don't need to show linkyPrice itself from API,
-  // so pay50 preview shows "50% amount" based on a placeholder total.
-  // But we CAN keep identical UX by only showing 50% amount after API returns SHOW_PAY50.
-  // For now: match your current flow exactly -> open preview first, then confirm triggers POST.
-  // So we keep a "total" concept, but we don't have linkyPrice in props.
-  // To keep it 100% consistent, we'll call POST first to get linkyPrice/currency,
-  // then show pay popup with those values.
 
   const [pay50Total, setPay50Total] = useState<number | null>(null);
   const [payCurrency, setPayCurrency] = useState<string | null>(null);
@@ -51,7 +41,7 @@ export function RepeatOrderFlow({ locale, sourceRequestId, isAuthed, variant = '
     e?.stopPropagation();
 
     if (!sourceRequestId) {
-      alert(locale === 'ka' ? 'აკლია sourceRequestId' : 'Missing sourceRequestId');
+      alert(t(locale, 'აკლია sourceRequestId', 'Missing sourceRequestId'));
       return;
     }
 
@@ -60,70 +50,58 @@ export function RepeatOrderFlow({ locale, sourceRequestId, isAuthed, variant = '
       return;
     }
 
-    // ✅ Authed: first call repeat API to get SHOW_PAY50 data (price/currency),
-    // then open pay popup.
-    void preparePay50();
+    void preparePreview();
   }
 
-  async function preparePay50() {
+  async function preparePreview() {
     setLoading(true);
     try {
       const res = await fetch('/api/requests/repeat', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ sourceRequestId })
+        body: JSON.stringify({ sourceRequestId, action: 'preview' })
       });
 
       const txt = await res.text();
       const j = txt ? JSON.parse(txt) : {};
 
       if (!res.ok) {
-        alert((j as any)?.error ?? (locale === 'ka' ? 'ვერ შესრულდა' : 'Action failed'));
+        alert((j as any)?.error ?? t(locale, 'ვერ შესრულდა', 'Action failed'));
         return;
       }
 
-      // expired -> redirect flow identical to your modal
-      if ((j as any)?.mode === 'NEW_REQUEST') {
+      // expired -> immediately inform and redirect to pending after confirm (no pay UI)
+      if ((j as any)?.mode === 'EXPIRED') {
         alert(
-          locale === 'ka'
-            ? 'შეთავაზებას გაუვიდა ვადა. გაგზავნილია ახალი მოთხოვნა.'
-            : 'The offer has expired. A new request was sent.'
+          t(
+            locale,
+            'შეთავაზებას გაუვიდა ვადა — შეკვეთა გადაიქცევა ახალ მოთხოვნად.',
+            'Offer expired — ordering will create a new request.'
+          )
         );
-        window.location.href = `/${locale}/mypage?tab=pending`;
+        void confirm(true);
         return;
       }
 
-      // show pay50
       if ((j as any)?.mode === 'SHOW_PAY50') {
         const total = Number((j as any)?.linkyPrice ?? 0);
         const cur = String((j as any)?.currency ?? '');
+
         setPay50Total(Number.isFinite(total) ? total : 0);
         setPayCurrency(cur || null);
         setPayOpen(true);
         return;
       }
 
-      // unknown mode -> safe fallback
-      setPayOpen(true);
+      alert(t(locale, 'ვერ მივიღეთ მონაცემები', 'Could not get preview data'));
     } catch (err: any) {
-      alert(err?.message ?? (locale === 'ka' ? 'ქსელის შეცდომა' : 'Network error'));
+      alert(err?.message ?? t(locale, 'ქსელის შეცდომა', 'Network error'));
     } finally {
       setLoading(false);
     }
   }
 
-  async function confirmPay50() {
-    // In your backend, POST already created the OFFERED repeat request
-    // and returns SHOW_PAY50. You then mark payment elsewhere later.
-    // But your current modal: POST immediately, then redirects to inProgress.
-    // You asked: "as in modal". In your modal code you redirect after POST success.
-    // However your route currently returns SHOW_PAY50 and does NOT mark PAID_PARTIALLY.
-    // In your modal, confirmPay50 is still doing POST and then redirecting.
-    // We'll keep that behavior exactly: call POST again is not ideal.
-    // So instead: on confirm, just redirect to /mypage?tab=inProgress
-    // BUT only if you actually have a payment patch route later.
-    // To mirror your current modal 1:1, we call POST again (same as modal) and redirect.
-
+  async function confirm(autoConfirmExpired = false) {
     if (!sourceRequestId) return;
 
     setLoading(true);
@@ -131,31 +109,56 @@ export function RepeatOrderFlow({ locale, sourceRequestId, isAuthed, variant = '
       const res = await fetch('/api/requests/repeat', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ sourceRequestId })
+        body: JSON.stringify({ sourceRequestId, action: 'confirm' })
       });
 
       const txt = await res.text();
       const j = txt ? JSON.parse(txt) : {};
 
       if (!res.ok) {
-        alert((j as any)?.error ?? (locale === 'ka' ? 'ვერ შესრულდა' : 'Action failed'));
+        alert((j as any)?.error ?? t(locale, 'ვერ შესრულდა', 'Action failed'));
         return;
       }
 
       if ((j as any)?.mode === 'NEW_REQUEST') {
-        alert(
-          locale === 'ka'
-            ? 'შეთავაზებას გაუვიდა ვადა. გაგზავნილია ახალი მოთხოვნა.'
-            : 'The offer has expired. A new request was sent.'
-        );
+        if (!autoConfirmExpired) {
+          alert(
+            t(
+              locale,
+              'შეთავაზებას გაუვიდა ვადა. გაგზავნილია ახალი მოთხოვნა.',
+              'The offer has expired. A new request was sent.'
+            )
+          );
+        }
+        setPayOpen(false);
         window.location.href = `/${locale}/mypage?tab=pending`;
         return;
       }
 
+      if ((j as any)?.mode === 'NEW_REQUEST_EXISTS') {
+        alert(
+          t(
+            locale,
+            'ეს მოთხოვნა უკვე გაგზავნილია ცოტა ხნის წინ. გადაგიყვანე Pending-ში.',
+            'This request was already sent recently. Redirecting you to Pending.'
+          )
+        );
+        setPayOpen(false);
+        window.location.href = `/${locale}/mypage?tab=pending`;
+        return;
+      }
+
+      if ((j as any)?.mode === 'PAID_PARTIALLY') {
+        setPayOpen(false);
+        window.location.href = `/${locale}/mypage?tab=inProgress`;
+        return;
+      }
+
+      // fallback
       setPayOpen(false);
       window.location.href = `/${locale}/mypage?tab=inProgress`;
     } catch (err: any) {
-      alert(err?.message ?? (locale === 'ka' ? 'ქსელის შეცდომა' : 'Network error'));
+      alert(err?.message ?? t(locale, 'ქსელის შეცდომა', 'Network error'));
     } finally {
       setLoading(false);
     }
@@ -166,16 +169,10 @@ export function RepeatOrderFlow({ locale, sourceRequestId, isAuthed, variant = '
   return (
     <>
       <Button onClick={openOrderFlow} disabled={loading} className="bg-accent text-black hover:bg-accent/90">
-        {loading
-          ? locale === 'ka'
-            ? 'იგზავნება…'
-            : 'Processing…'
-          : locale === 'ka'
-            ? 'შეუკვეთე შენც'
-            : 'Order yours'}
+        {loading ? t(locale, 'იგზავნება…', 'Processing…') : t(locale, 'შეუკვეთე შენც', 'Order yours')}
       </Button>
 
-      {/* ✅ GUEST POPUP */}
+      {/* GUEST POPUP */}
       {authOpen ? (
         <div
           className="fixed inset-0 z-[90] flex items-end justify-center bg-black/50 p-2 md:items-center md:p-6"
@@ -183,19 +180,19 @@ export function RepeatOrderFlow({ locale, sourceRequestId, isAuthed, variant = '
         >
           <div className="w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
             <Card className="overflow-hidden p-4 md:p-5">
-              <div className="text-lg font-black">
-                {locale === 'ka' ? 'ავტორიზაცია საჭიროა' : 'Authorization required'}
-              </div>
+              <div className="text-lg font-black">{t(locale, 'ავტორიზაცია საჭიროა', 'Authorization required')}</div>
 
               <div className="mt-1 text-sm text-muted">
-                {locale === 'ka'
-                  ? 'პროდუქტის შესაკვეთად გთხოვთ გაიარეთ ავტორიზაცია ან რეგისტრაცია.'
-                  : 'To order this product, please log in or create an account.'}
+                {t(
+                  locale,
+                  'პროდუქტის შესაკვეთად გთხოვთ გაიარეთ ავტორიზაცია ან რეგისტრაცია.',
+                  'To order this product, please log in or create an account.'
+                )}
               </div>
 
               <div className="mt-4 flex justify-end gap-2">
                 <Button variant="secondary" onClick={() => setAuthOpen(false)}>
-                  {locale === 'ka' ? 'დახურვა' : 'Close'}
+                  {t(locale, 'დახურვა', 'Close')}
                 </Button>
 
                 <Button
@@ -204,7 +201,7 @@ export function RepeatOrderFlow({ locale, sourceRequestId, isAuthed, variant = '
                     router.push(`/${locale}/register`);
                   }}
                 >
-                  {locale === 'ka' ? 'ავტორიზაცია / რეგისტრაცია' : 'Login / Register'}
+                  {t(locale, 'ავტორიზაცია / რეგისტრაცია', 'Login / Register')}
                 </Button>
               </div>
             </Card>
@@ -212,7 +209,7 @@ export function RepeatOrderFlow({ locale, sourceRequestId, isAuthed, variant = '
         </div>
       ) : null}
 
-      {/* ✅ PAY 50 PREVIEW POPUP */}
+      {/* PAY 50 PREVIEW POPUP */}
       {payOpen ? (
         <div
           className="fixed inset-0 z-[90] flex items-end justify-center bg-black/50 p-2 md:items-center md:p-6"
@@ -220,30 +217,22 @@ export function RepeatOrderFlow({ locale, sourceRequestId, isAuthed, variant = '
         >
           <div className="w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
             <Card className="overflow-hidden p-4 md:p-5">
-              <div className="text-lg font-black">
-                {locale === 'ka' ? 'წინასწარი გადახდის დადასტურება' : 'Confirm prepayment'}
-              </div>
+              <div className="text-lg font-black">{t(locale, 'წინასწარი გადახდის დადასტურება', 'Confirm prepayment')}</div>
 
               <div className="mt-1 text-sm text-muted">
-                {locale === 'ka'
-                  ? 'შეთავაზების დასადასტურებლად საჭიროა 50%-ის გადახდა.'
-                  : 'To accept this offer you need to pay 50% upfront.'}
+                {t(locale, 'შეთავაზების დასადასტურებლად საჭიროა 50%-ის გადახდა.', 'To accept this offer you need to pay 50% upfront.')}
               </div>
 
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <div className="rounded-2xl border border-border bg-card/40 p-3">
-                  <div className="text-xs font-semibold text-muted">
-                    {locale === 'ka' ? 'Linky ფასი' : 'Linky price'}
-                  </div>
+                  <div className="text-xs font-semibold text-muted">{t(locale, 'Linky ფასი', 'Linky price')}</div>
                   <div className="mt-1 text-sm font-semibold">
                     {pay50Total != null ? pay50Total : '—'} {payCurrency ?? ''}
                   </div>
                 </div>
 
                 <div className="rounded-2xl border border-border bg-card/40 p-3">
-                  <div className="text-xs font-semibold text-muted">
-                    {locale === 'ka' ? '50%-ის თანხა' : '50% amount'}
-                  </div>
+                  <div className="text-xs font-semibold text-muted">{t(locale, '50%-ის თანხა', '50% amount')}</div>
                   <div className="mt-1 text-sm font-semibold">
                     {pay50Amount != null ? pay50Amount : '—'} {payCurrency ?? ''}
                   </div>
@@ -251,24 +240,20 @@ export function RepeatOrderFlow({ locale, sourceRequestId, isAuthed, variant = '
               </div>
 
               <div className="mt-3 rounded-2xl border border-border bg-card/30 p-3 text-sm text-muted">
-                {locale === 'ka'
-                  ? 'ეს არის წინასწარი 50% — შეკვეთის დასადასტურებლად. დარჩენილი თანხა გადაიხდება როცა შეკვეთა ჩამოვა.'
-                  : 'This is a 50% prepayment to confirm the order. The remaining amount is paid after the order arrives.'}
+                {t(
+                  locale,
+                  'ეს არის წინასწარი 50% — შეკვეთის დასადასტურებლად. დარჩენილი თანხა გადაიხდება როცა შეკვეთა ჩამოვა.',
+                  'This is a 50% prepayment to confirm the order. The remaining amount is paid after the order arrives.'
+                )}
               </div>
 
               <div className="mt-4 flex justify-end gap-2">
                 <Button variant="secondary" disabled={loading} onClick={() => setPayOpen(false)}>
-                  {locale === 'ka' ? 'დახურვა' : 'Close'}
+                  {t(locale, 'დახურვა', 'Close')}
                 </Button>
 
-                <Button disabled={loading} onClick={confirmPay50}>
-                  {loading
-                    ? locale === 'ka'
-                      ? 'იგზავნება…'
-                      : 'Processing…'
-                    : locale === 'ka'
-                      ? 'გადახდა (დემო)'
-                      : 'Pay (demo)'}
+                <Button disabled={loading} onClick={() => confirm(false)}>
+                  {loading ? t(locale, 'იგზავნება…', 'Processing…') : t(locale, 'გადახდა (დემო)', 'Pay (demo)')}
                 </Button>
               </div>
             </Card>
