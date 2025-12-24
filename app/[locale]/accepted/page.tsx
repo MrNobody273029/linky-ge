@@ -185,20 +185,23 @@ export default async function AcceptedPage({
       <AcceptedSearchBar q={q} placeholder={searchPlaceholder} clearLabel={clearLabel} />
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {rows.map((r) => (
-          <ProductShowcaseCard
-            key={r.id}
-            locale={locale}
-            title={r.offer?.productTitle ?? t('productFallback')}
-            imageUrl={r.offer?.imageUrl ?? null}
-            originalPrice={r.originalPrice != null ? Number(r.originalPrice) : null}
-            linkyPrice={Number(r.offer!.linkyPrice)}
-            currency={r.currency}
-            etaDays={r.offer!.etaDays}
-            sourceRequestId={r.id}
-            isAuthed={!!user}
-          />
+        {rows
+          .filter((r) => r.offer?.linkyPrice != null && r.offer?.etaDays != null)
+          .map((r) => (
+            <ProductShowcaseCard
+              key={r.id}
+              locale={locale}
+              title={r.offer!.productTitle ?? t('productFallback')}
+              imageUrl={r.offer!.imageUrl ?? null}
+              originalPrice={r.originalPrice != null ? Number(r.originalPrice) : null}
+              linkyPrice={Number(r.offer!.linkyPrice)}
+              currency={r.currency}
+              etaDays={Number(r.offer!.etaDays)}
+              sourceRequestId={r.id}
+              isAuthed={!!user}
+            />
         ))}
+
       </div>
 
       <div className="mt-8 flex items-center justify-center gap-2">
