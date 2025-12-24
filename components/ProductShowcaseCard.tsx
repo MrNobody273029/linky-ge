@@ -16,6 +16,9 @@ type Props = {
 
   // ✅ აუცილებელია: რომ repeat-order იმუშაოს
   sourceRequestId: string;
+
+  // ✅ NEW (optional) — don't break old usages
+  isAuthed?: boolean;
 };
 
 export function ProductShowcaseCard({
@@ -26,12 +29,12 @@ export function ProductShowcaseCard({
   linkyPrice,
   currency,
   etaDays,
-  sourceRequestId
+  sourceRequestId,
+  isAuthed = true
 }: Props) {
   const [open, setOpen] = useState(false);
 
-  const saved =
-    originalPrice != null ? Math.max(0, originalPrice - linkyPrice) : null;
+  const saved = originalPrice != null ? Math.max(0, originalPrice - linkyPrice) : null;
 
   return (
     <>
@@ -87,8 +90,8 @@ export function ProductShowcaseCard({
             className="bg-accent text-black hover:bg-accent/90"
             onClick={(e) => {
               e.preventDefault();
-              e.stopPropagation(); // ✅ რომ ქარდის button click-მა არ “ჩაყლაპოს”
-              setOpen(true);       // ✅ ჯერ მოდალს ვხსნით
+              e.stopPropagation();
+              setOpen(true);
             }}
           >
             {locale === 'ka' ? 'შეუკვეთე შენც' : 'Order yours'}
@@ -105,7 +108,8 @@ export function ProductShowcaseCard({
           linkyPrice={linkyPrice}
           currency={currency}
           etaDays={etaDays}
-          sourceRequestId={sourceRequestId} 
+          sourceRequestId={sourceRequestId}
+          isAuthed={isAuthed}
           onClose={() => setOpen(false)}
         />
       ) : null}

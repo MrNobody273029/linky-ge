@@ -271,7 +271,7 @@
   "byUser": "by {username}",
   "noImage": "No image",
 
-  "allTitle": "Accepted orders",
+  "allTitle": "All offfers other customers have already taken advantage of",
   "allSubtitle": "Browse all orders that customers confirmed with a 50% prepayment.",
   "searchPh": "Search by username…",
   "searchBtn": "Search",

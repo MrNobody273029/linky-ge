@@ -84,27 +84,29 @@ export default async function Page({
               <h2 className="text-lg font-bold">{tAcc('title')}</h2>
             </div>
 
-            <Link
-              href={`/${locale}/accepted`}
-              className="text-sm font-semibold text-muted hover:text-accent hover:underline underline-offset-4"
-            >
-              {tAcc('viewAll')}
+            <Link href={`/${locale}/accepted`}>
+              <Button className="bg-accent text-black hover:bg-accent/90">
+                {tAcc('viewAll')}
+              </Button>
             </Link>
+
           </div>
 
           <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {accepted.map((r) => (
-              <ProductShowcaseCard
-                key={r.id}
-                locale={locale}
-                title={r.offer!.productTitle}
-                imageUrl={r.offer!.imageUrl}
-                originalPrice={r.originalPrice ? Number(r.originalPrice) : null}
-                linkyPrice={Number(r.offer!.linkyPrice)}
-                currency={r.currency}
-                etaDays={r.offer!.etaDays}
-                sourceRequestId={r.id}
-              />
+                  <ProductShowcaseCard
+                    key={r.id}
+                    locale={locale}
+                    title={r.offer!.productTitle}
+                    imageUrl={r.offer!.imageUrl}
+                    originalPrice={r.originalPrice ? Number(r.originalPrice) : null}
+                    linkyPrice={Number(r.offer!.linkyPrice)}
+                    currency={r.currency}
+                    etaDays={r.offer!.etaDays}
+                    sourceRequestId={r.id}
+                    isAuthed={!!user}
+                  />
+
             ))}
           </div>
         </div>

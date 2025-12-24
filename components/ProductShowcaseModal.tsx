@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { Card, Button } from '@/components/ui';
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 type Props = {
   locale: string;
@@ -14,6 +15,9 @@ type Props = {
   etaDays: number;
   sourceRequestId: string;
   onClose: () => void;
+
+  // ✅ NEW (optional) — don't break old usages
+  isAuthed?: boolean;
 };
 
 function calcPay50(total: number) {
@@ -29,26 +33,38 @@ export function ProductShowcaseModal({
   currency,
   etaDays,
   sourceRequestId,
-  onClose
+  onClose,
+  isAuthed = true
 }: Props) {
+  const router = useRouter();
+
   const [loading, setLoading] = useState(false);
 
   // ✅ PREVIEW modal only (does NOT create request)
   const [payOpen, setPayOpen] = useState(false);
 
+  // ✅ Guest auth-required popup (instead of pay popup)
+  const [authOpen, setAuthOpen] = useState(false);
+
   const pay50Total = linkyPrice;
   const pay50Amount = useMemo(() => calcPay50(pay50Total), [pay50Total]);
 
-  function openPayPreview(e?: React.MouseEvent) {
+  function openOrderFlow(e?: React.MouseEvent) {
     e?.preventDefault();
     e?.stopPropagation();
 
     if (!sourceRequestId) {
-      alert('Missing sourceRequestId');
+      alert(locale === 'ka' ? 'აკლია sourceRequestId' : 'Missing sourceRequestId');
       return;
     }
 
-    // ✅ only open popup — no API call here
+    // ✅ If guest -> open auth popup ONLY (no pay popup)
+    if (!isAuthed) {
+      setAuthOpen(true);
+      return;
+    }
+
+    // ✅ If authed -> open pay preview popup
     setPayOpen(true);
   }
 
@@ -68,7 +84,7 @@ export function ProductShowcaseModal({
       const j = txt ? JSON.parse(txt) : {};
 
       if (!res.ok) {
-        alert((j as any)?.error ?? 'Action failed');
+        alert((j as any)?.error ?? (locale === 'ka' ? 'ვერ შესრულდა' : 'Action failed'));
         return;
       }
 
@@ -87,7 +103,7 @@ export function ProductShowcaseModal({
       setPayOpen(false);
       window.location.href = `/${locale}/mypage?tab=inProgress`;
     } catch (err: any) {
-      alert(err?.message ?? 'Network error');
+      alert(err?.message ?? (locale === 'ka' ? 'ქსელის შეცდომა' : 'Network error'));
     } finally {
       setLoading(false);
     }
@@ -138,7 +154,7 @@ export function ProductShowcaseModal({
             </Button>
 
             <Button
-              onClick={openPayPreview}
+              onClick={openOrderFlow}
               className="bg-accent text-black hover:bg-accent/90"
               disabled={loading}
             >
@@ -147,7 +163,45 @@ export function ProductShowcaseModal({
           </div>
         </Card>
 
-        {/* ✅ PAY 50 PREVIEW POPUP (NO creation until user clicks Pay) */}
+        {/* ✅ GUEST: AUTH REQUIRED POPUP */}
+        {authOpen ? (
+          <div
+            className="fixed inset-0 z-[90] flex items-end justify-center bg-black/50 p-2 md:items-center md:p-6"
+            onClick={() => setAuthOpen(false)}
+          >
+            <div className="w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
+              <Card className="overflow-hidden p-4 md:p-5">
+                <div className="text-lg font-black">
+                  {locale === 'ka' ? 'ავტორიზაცია საჭიროა' : 'Authorization required'}
+                </div>
+
+                <div className="mt-1 text-sm text-muted">
+                  {locale === 'ka'
+                    ? 'პროდუქტის შესაკვეთად გთხოვთ გაიარეთ ავტორიზაცია ან რეგისტრაცია.'
+                    : 'To order this product, please log in or create an account.'}
+                </div>
+
+                <div className="mt-4 flex justify-end gap-2">
+                  <Button variant="secondary" onClick={() => setAuthOpen(false)}>
+                    {locale === 'ka' ? 'დახურვა' : 'Close'}
+                  </Button>
+
+                  <Button
+                    onClick={() => {
+                      setAuthOpen(false);
+                      onClose(); // ✅ close parent modal too
+                      router.push(`/${locale}/register`);
+                    }}
+                  >
+                    {locale === 'ka' ? 'ავტორიზაცია / რეგისტრაცია' : 'Login / Register'}
+                  </Button>
+                </div>
+              </Card>
+            </div>
+          </div>
+        ) : null}
+
+        {/* ✅ AUTHED: PAY 50 PREVIEW POPUP */}
         {payOpen ? (
           <div
             className="fixed inset-0 z-[90] flex items-end justify-center bg-black/50 p-2 md:items-center md:p-6"
@@ -197,7 +251,13 @@ export function ProductShowcaseModal({
                   </Button>
 
                   <Button disabled={loading} onClick={confirmPay50}>
-                    {loading ? (locale === 'ka' ? 'იგზავნება…' : 'Processing…') : locale === 'ka' ? 'გადახდა (დემო)' : 'Pay (demo)'}
+                    {loading
+                      ? locale === 'ka'
+                        ? 'იგზავნება…'
+                        : 'Processing…'
+                      : locale === 'ka'
+                        ? 'გადახდა (დემო)'
+                        : 'Pay (demo)'}
                   </Button>
                 </div>
               </Card>

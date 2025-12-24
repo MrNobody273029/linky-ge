@@ -35,12 +35,14 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale} suppressHydrationWarning>
-      <body>
+      <body className="min-h-screen overflow-x-hidden">
         <Providers>
           <NextIntlClientProvider locale={locale} messages={messages}>
-            <NavBar locale={locale} />
-            <main>{children}</main>
-            <Footer locale={locale} />
+            <div className="min-h-screen overflow-x-hidden">
+              <NavBar locale={locale} />
+              <main className="min-h-[60vh]">{children}</main>
+              <Footer locale={locale} />
+            </div>
           </NextIntlClientProvider>
         </Providers>
       </body>
