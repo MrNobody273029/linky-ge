@@ -1,0 +1,20 @@
+import type { MetadataRoute } from 'next';
+
+export default function robots(): MetadataRoute.Robots {
+  return {
+    rules: [
+      {
+        userAgent: '*',
+        allow: ['/', '/accepted'],
+        disallow: [
+          '/admin',
+          '/login',
+          '/register',
+          '/mypage',
+          '/api',
+        ],
+      },
+    ],
+    sitemap: 'https://www.linky.ge/sitemap.xml',
+  };
+}
