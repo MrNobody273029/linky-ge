@@ -8,6 +8,7 @@ import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { Card, Button } from '@/components/ui';
+import { RepeatOrderFlow } from '@/components/RepeatOrderFlow';
 
 function parseId(idSlug: string) {
   // expecting: "<id>-<slug>"
@@ -58,7 +59,6 @@ export async function generateMetadata({
   });
 
   if (!row?.offer) {
-    // fallback: still produce a safe title; page will 404 on render
     const slug = decodeSlugPart(idSlug);
     const title = slug ? `Linky.ge — ${slug}` : 'Linky.ge';
     const canonical = `https://www.linky.ge/${locale}/accepted/${idSlug}`;
@@ -150,7 +150,6 @@ export default async function ProductAcceptedPage({
 
   const canonical = `https://www.linky.ge/${locale}/accepted/${idSlug}`;
 
-  // ✅ JSON-LD (Product)
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Product',
@@ -224,79 +223,27 @@ export default async function ProductAcceptedPage({
 
           <div className="mt-6 flex flex-wrap gap-2">
             {!user ? (
-              <Link href={`/${locale}/register`}>
-                <Button>{locale === 'ka' ? 'ავტორიზაცია / რეგისტრაცია' : 'Login / Register'}</Button>
-              </Link>
+              <RepeatOrderFlow
+                locale={locale}
+                sourceRequestId={row.id}
+                isAuthed={false}
+                variant="button"
+              />
             ) : (
-              <OrderNowButton locale={locale} sourceRequestId={row.id} />
+              <RepeatOrderFlow
+                locale={locale}
+                sourceRequestId={row.id}
+                isAuthed={true}
+                variant="button"
+              />
             )}
 
             <Link href={`/${locale}/accepted`}>
-              <Button variant="secondary">
-                {locale === 'ka' ? 'ყველა შეთავაზება' : 'All offers'}
-              </Button>
+              <Button variant="secondary">{locale === 'ka' ? 'ყველა შეთავაზება' : 'All offers'}</Button>
             </Link>
           </div>
         </Card>
       </div>
     </div>
-  );
-}
-
-/* =========================
-   CLIENT BUTTON (same logic as modal)
-========================= */
-function OrderNowButton({ locale, sourceRequestId }: { locale: string; sourceRequestId: string }) {
-  // keep it tiny: client component inside file
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const React = require('react') as typeof import('react');
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const [loading, setLoading] = React.useState(false);
-
-  async function order() {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/requests/repeat', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ sourceRequestId })
-      });
-
-      const txt = await res.text();
-      const j = txt ? JSON.parse(txt) : {};
-
-      if (!res.ok) {
-        alert((j as any)?.error ?? (locale === 'ka' ? 'ვერ შესრულდა' : 'Action failed'));
-        return;
-      }
-
-      if ((j as any)?.mode === 'NEW_REQUEST') {
-        alert(
-          locale === 'ka'
-            ? 'შეთავაზებას გაუვიდა ვადა. გაგზავნილია ახალი მოთხოვნა.'
-            : 'The offer has expired. A new request was sent.'
-        );
-        window.location.href = `/${locale}/mypage?tab=pending`;
-        return;
-      }
-
-      window.location.href = `/${locale}/mypage?tab=inProgress`;
-    } catch (err: any) {
-      alert(err?.message ?? (locale === 'ka' ? 'ქსელის შეცდომა' : 'Network error'));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <Button onClick={order} disabled={loading} className="bg-accent text-black hover:bg-accent/90">
-      {loading
-        ? locale === 'ka'
-          ? 'იგზავნება…'
-          : 'Processing…'
-        : locale === 'ka'
-          ? 'შეუკვეთე შენც'
-          : 'Order yours'}
-    </Button>
   );
 }
