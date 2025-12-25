@@ -1,4 +1,4 @@
-// app/[locale]/api/request/cancel/route.ts
+// app/api/request/cancel/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireUser } from '@/lib/auth';

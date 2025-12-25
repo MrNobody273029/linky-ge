@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { uploadToCloudinary } from '@/lib/cloudinary';
+import { triggerEmail } from '@/lib/email/events';
 
 function isHttpUrl(u: string) {
   try {
@@ -25,9 +26,8 @@ export async function POST(req: Request) {
 
   const requestId = String(fd.get('requestId') || '').trim();
 
-  // ✅ NEW (required)
+  // ✅ required
   const productTitle = String(fd.get('productTitle') || '').trim();
-
   const originalPriceRaw = String(fd.get('originalPrice') || '').trim();
   const linkyPriceRaw = String(fd.get('linkyPrice') || '').trim();
   const etaDaysRaw = String(fd.get('etaDays') || '').trim();
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
   // optional
   const note = String(fd.get('note') || '').trim();
 
-  // ✅ required (admin-only but must be filled)
+  // ✅ admin-only but required
   const adminSourceUrl = String(fd.get('adminSourceUrl') || '').trim();
 
   // optional image
@@ -43,7 +43,6 @@ export async function POST(req: Request) {
 
   if (!requestId) return NextResponse.json({ error: 'Missing requestId' }, { status: 400 });
 
-  // ✅ required fields
   const missing: string[] = [];
   if (!productTitle) missing.push('productTitle');
   if (!originalPriceRaw) missing.push('originalPrice');
@@ -52,13 +51,9 @@ export async function POST(req: Request) {
   if (!adminSourceUrl) missing.push('adminSourceUrl');
 
   if (missing.length) {
-    return NextResponse.json(
-      { error: `Missing required fields: ${missing.join(', ')}` },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: `Missing required fields: ${missing.join(', ')}` }, { status: 400 });
   }
 
-  // ✅ adminSourceUrl basic validation (url)
   if (!isHttpUrl(adminSourceUrl)) {
     return NextResponse.json({ error: 'Invalid adminSourceUrl' }, { status: 400 });
   }
@@ -74,7 +69,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid etaDays' }, { status: 400 });
   }
 
-  // Only allow offer create/edit if still NEW/SCOUTING/OFFERED
   const reqRow = await prisma.request.findUnique({
     where: { id: requestId },
     select: { status: true }
@@ -96,39 +90,69 @@ export async function POST(req: Request) {
     }
   }
 
-  // ✅ image is optional even for first offer
-  // If no upload and no existing image -> keep null
   const nextImageUrl = imageUrl ?? (existing?.imageUrl ?? null);
 
-  await prisma.request.update({
+  // ✅ update + return only what we need for email (NO adminSourceUrl in select payload)
+  const updated = await prisma.request.update({
     where: { id: requestId },
     data: {
       originalPrice,
-      titleHint: productTitle, // ✅ update request title for UI
+      titleHint: productTitle,
       status: 'OFFERED',
       offer: existing
         ? {
             update: {
-              productTitle, // ✅ NEW
+              productTitle,
               linkyPrice,
               etaDays,
               note: note || null,
-              imageUrl: nextImageUrl, // ✅ may be null
-              adminSourceUrl // ✅ required, store as string (not null)
+              imageUrl: nextImageUrl,
+              adminSourceUrl // stored, BUT we won't email it
             }
           }
         : {
             create: {
-              productTitle, // ✅ NEW
+              productTitle,
               linkyPrice,
               etaDays,
               note: note || null,
-              imageUrl: nextImageUrl, // ✅ may be null
-              adminSourceUrl // ✅ required
+              imageUrl: nextImageUrl,
+              adminSourceUrl
             }
           }
+    },
+    select: {
+      id: true,
+      currency: true,
+      originalPrice: true,
+      titleHint: true,
+      user: { select: { email: true, username: true } },
+      offer: { select: { imageUrl: true, linkyPrice: true, etaDays: true, note: true } }
     }
   });
+
+  // ✅ USER email — offer created (NO adminSourceUrl ever sent)
+  try {
+    const appUrl = process.env.APP_URL || '';
+    const ctaUrl = `${appUrl}/mypage?tab=offers`;
+
+    await triggerEmail({
+      event: 'USER_OFFER_CREATED',
+      to: updated.user.email,
+      payload: {
+        username: updated.user.username,
+        requestTitle: updated.titleHint || 'პროდუქტი',
+        originalPriceGel: updated.originalPrice == null ? null : Number(updated.originalPrice),
+        offerPriceGel: updated.offer ? Number(updated.offer.linkyPrice) : linkyPrice,
+        etaDays: updated.offer?.etaDays ?? etaDays,
+        expiresInDays: 7,
+        imageUrl: updated.offer?.imageUrl ?? null,
+        ctaUrl
+      }
+    });
+  } catch (e) {
+    console.error('EMAIL FAILED (USER_OFFER_CREATED):', e);
+  }
 
   return NextResponse.json({ ok: true });
 }

@@ -1,4 +1,4 @@
-// app/[locale]/api/admin/scout/route.ts
+// app/api/admin/scout/route.ts
 
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth';
