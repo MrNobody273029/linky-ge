@@ -26,16 +26,18 @@ const FALLBACK_IMAGE = '/og/accepted-default.png';
 
 function slugify(input: string) {
   const s = (input || '').trim().toLowerCase();
-
-  // keep unicode letters (including ka), but remove noisy chars
   const cleaned = s
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '') // diacritics
     .replace(/[^\p{L}\p{N}]+/gu, '-') // non letters/numbers -> dash
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
-
   return (cleaned || 'product').slice(0, 80);
+}
+
+// ✅ Keep “open in new tab” behavior working naturally
+function shouldLetBrowserHandleLink(e: React.MouseEvent) {
+  return e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button === 1;
 }
 
 export function ProductShowcaseCard({
@@ -67,13 +69,17 @@ export function ProductShowcaseCard({
   return (
     <>
       <Card className="relative flex h-full flex-col p-4">
-        {/* ✅ SEO: crawlable link to a real page (does NOT change your UI logic) */}
-        <Link href={productHref} className="sr-only" aria-label={ariaOpen}>
-          {title}
-        </Link>
-
-        {/* CLICK AREA */}
-        <button type="button" onClick={() => setOpen(true)} className="flex flex-1 flex-col text-left">
+        {/* ✅ REAL crawlable link (VISIBLE), but we intercept normal click to open modal */}
+        <Link
+          href={productHref}
+          aria-label={ariaOpen}
+          className="flex flex-1 flex-col text-left"
+          onClick={(e) => {
+            if (shouldLetBrowserHandleLink(e)) return; // allow new tab / middle click
+            e.preventDefault(); // prevent navigation
+            setOpen(true); // open modal instead
+          }}
+        >
           {/* IMAGE */}
           <div className="relative h-48 w-full overflow-hidden rounded-xl bg-border">
             <Image
@@ -111,9 +117,9 @@ export function ProductShowcaseCard({
               </div>
             ) : null}
           </div>
-        </button>
+        </Link>
 
-        {/* CTA BUTTON */}
+        {/* CTA BUTTON (always opens modal, doesn’t navigate) */}
         <div className="mt-4 flex justify-end">
           <Button
             className="bg-accent text-black hover:bg-accent/90"

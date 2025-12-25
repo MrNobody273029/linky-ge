@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { Card, Button } from '@/components/ui';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 type Props = {
@@ -36,6 +36,11 @@ function slugify(input: string) {
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
   return (cleaned || 'product').slice(0, 80);
+}
+
+function getCurrentPathWithQuery() {
+  if (typeof window === 'undefined') return '/';
+  return `${window.location.pathname}${window.location.search}${window.location.hash}`;
 }
 
 export function ProductShowcaseModal({
@@ -71,6 +76,44 @@ export function ProductShowcaseModal({
   // ✅ always show a real image (fallback if missing)
   const shownImage = imageUrl || FALLBACK_IMAGE;
 
+  // =========================
+  // ✅ URL sync for modal (no navigation)
+  // - on open: pushState -> productHref
+  // - on back: close modal
+  // - on close/unmount: restore previous URL
+  // =========================
+  const prevUrlRef = useRef<string>('');
+  const pushedRef = useRef(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    prevUrlRef.current = getCurrentPathWithQuery();
+
+    // pushState to modal URL (without navigation)
+    if (prevUrlRef.current !== productHref) {
+      window.history.pushState({ __linky_modal: true }, '', productHref);
+      pushedRef.current = true;
+    }
+
+    const onPopState = () => {
+      // When user presses Back, close modal
+      onClose();
+    };
+
+    window.addEventListener('popstate', onPopState);
+
+    return () => {
+      window.removeEventListener('popstate', onPopState);
+
+      // restore previous URL if we pushed
+      if (typeof window !== 'undefined' && pushedRef.current) {
+        window.history.replaceState({}, '', prevUrlRef.current || '/');
+      }
+    };
+    // IMPORTANT: only depends on productHref/onClose
+  }, [productHref, onClose]);
+
   function openOrderFlow(e?: React.MouseEvent) {
     e?.preventDefault();
     e?.stopPropagation();
@@ -95,12 +138,11 @@ export function ProductShowcaseModal({
 
     setLoading(true);
     try {
-        const res = await fetch('/api/requests/repeat', {
+      const res = await fetch('/api/requests/repeat', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ sourceRequestId, action: 'confirm' })
       });
-
 
       const txt = await res.text();
       const j = txt ? JSON.parse(txt) : {};
@@ -131,8 +173,18 @@ export function ProductShowcaseModal({
 
   const saved = originalPrice != null ? Math.max(0, originalPrice - linkyPrice) : null;
 
+  // close button should also restore URL immediately
+  function handleClose() {
+    // restore URL before closing (so no flicker)
+    if (typeof window !== 'undefined' && pushedRef.current) {
+      window.history.replaceState({}, '', prevUrlRef.current || '/');
+      pushedRef.current = false;
+    }
+    onClose();
+  }
+
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4" onClick={handleClose}>
       <div className="w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
         <Card className="p-5">
           <div className="relative h-64 w-full rounded-xl bg-border">
@@ -177,7 +229,7 @@ export function ProductShowcaseModal({
           </div>
 
           <div className="mt-6 flex justify-end gap-2">
-            <Button variant="secondary" onClick={onClose} disabled={loading}>
+            <Button variant="secondary" onClick={handleClose} disabled={loading}>
               {locale === 'ka' ? 'დახურვა' : 'Close'}
             </Button>
 
@@ -211,7 +263,7 @@ export function ProductShowcaseModal({
                   <Button
                     onClick={() => {
                       setAuthOpen(false);
-                      onClose();
+                      handleClose();
                       router.push(`/${locale}/register`);
                     }}
                   >

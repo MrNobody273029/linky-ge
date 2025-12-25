@@ -5,13 +5,18 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: '*',
-        allow: ['/', '/accepted'],
+        allow: ['/', '/en', '/accepted', '/en/accepted'],
         disallow: [
           '/admin',
+          '/en/admin',
           '/login',
+          '/en/login',
           '/register',
+          '/en/register',
           '/mypage',
+          '/en/mypage',
           '/api',
+          '/en/api',
         ],
       },
     ],
