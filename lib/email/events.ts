@@ -1,5 +1,3 @@
-// lib/email/events.ts
-
 import { sendEmail } from "@/lib/email/sendEmail";
 import { buildAppUrl } from "@/lib/email/buildLinks";
 
@@ -15,6 +13,9 @@ import { UserDeliveredEmail } from "@/lib/email/templates/user-delivered";
 import { UserInProgressEmail } from "@/lib/email/templates/user-in-progress";
 import { UserArrivedPayRemainingEmail } from "@/lib/email/templates/user-arrived-pay-remaining";
 
+// ✅ not-found template
+import { UserNotFoundEmail } from "@/lib/email/templates/user-not-found";
+
 export type EmailEvent =
   | "ADMIN_NEW_REQUEST"
   | "ADMIN_PAYMENT_RECEIVED"
@@ -22,7 +23,8 @@ export type EmailEvent =
   | "USER_PAYMENT_RECEIVED"
   | "USER_IN_PROGRESS"
   | "USER_ARRIVED_PAY_REMAINING"
-  | "USER_DELIVERED";
+  | "USER_DELIVERED"
+  | "USER_NOT_FOUND";
 
 type SendArgs = {
   event: EmailEvent;
@@ -70,6 +72,11 @@ export async function triggerEmail({ event, to, payload }: SendArgs) {
     case "USER_DELIVERED":
       subject = `🎉 ჩაბარებულია`;
       html = UserDeliveredEmail({ appUrl, ...payload });
+      break;
+
+    case "USER_NOT_FOUND":
+      subject = `😕 ამ ეტაპზე უკეთესი ფასი ვერ ვიპოვეთ`;
+      html = UserNotFoundEmail({ appUrl, ...payload });
       break;
 
     default:
