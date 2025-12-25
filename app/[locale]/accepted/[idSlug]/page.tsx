@@ -319,6 +319,21 @@ export default async function ProductAcceptedPage({
               ? `ჩამოსვლის ვადა: ${row.offer.etaDays} დღე`
               : `Delivery ETA: ${row.offer.etaDays} days`}
           </div>
+{/* ✅ NEW: short description for SEO + trust (ka/en) */}
+<div className="mt-6 text-sm text-muted">
+  {locale === 'ka' ? (
+    <>
+      პროდუქტები ჩამოდის ევროპიდან, ოფიციალური, ლიცენზირებული აფთიაქებიდან. ფასი მოიცავს
+      ტრანსპორტირებას და საკომისიოს. ყველა პროდუქტი არის ორიგინალი.
+    </>
+  ) : (
+    <>
+      Products are delivered from Europe via official, licensed pharmacies. The price includes
+      delivery and service fees. All products are original.
+    </>
+  )}
+</div>
+
 
           {/* ✅ Strong internal linking + share-friendly canonical link */}
           <div className="mt-4 rounded-2xl border border-border bg-card/20 p-3 text-xs text-muted">
@@ -328,6 +343,8 @@ export default async function ProductAcceptedPage({
                 {canonical}
               </a>
             </div>
+
+
           </div>
 
           <div className="mt-6 flex flex-wrap gap-2">

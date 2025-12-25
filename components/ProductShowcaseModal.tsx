@@ -84,6 +84,7 @@ export function ProductShowcaseModal({
   // =========================
   const prevUrlRef = useRef<string>('');
   const pushedRef = useRef(false);
+const navigatedRef = useRef(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -103,14 +104,15 @@ export function ProductShowcaseModal({
 
     window.addEventListener('popstate', onPopState);
 
-    return () => {
-      window.removeEventListener('popstate', onPopState);
+ return () => {
+  window.removeEventListener('popstate', onPopState);
 
-      // restore previous URL if we pushed
-      if (typeof window !== 'undefined' && pushedRef.current) {
-        window.history.replaceState({}, '', prevUrlRef.current || '/');
-      }
-    };
+  // ✅ თუ რეალურად დავნავიგირდით product page-ზე, აღარ დავაბრუნოთ prevUrl
+  if (typeof window !== 'undefined' && pushedRef.current && !navigatedRef.current) {
+    window.history.replaceState({}, '', prevUrlRef.current || '/');
+  }
+};
+
     // IMPORTANT: only depends on productHref/onClose
   }, [productHref, onClose]);
 
@@ -202,9 +204,19 @@ export function ProductShowcaseModal({
 
           {/* ✅ SEO/share: real URL with name */}
           <div className="mt-1 text-xs text-muted">
-            <Link href={productHref} className="underline underline-offset-2">
-              {locale === 'ka' ? 'ლინკის ნახვა/გაზიარება' : 'Open / share link'}
-            </Link>
+ <a
+  href={productHref}
+  className="underline underline-offset-2"
+  onClick={(e) => {
+    e.preventDefault();
+    navigatedRef.current = true;   // ✅ cleanup აღარ დააბრუნებს prevUrl-ს
+    onClose();                     // ✅ დახურე მოდალი
+    router.push(productHref);      // ✅ გადადი რეალურ [idSlug] გვერდზე
+  }}
+>
+  {locale === 'ka' ? 'ლინკის ნახვა/გაზიარება' : 'Open / share link'}
+</a>
+
           </div>
 
           <div className="mt-3 space-y-1 text-sm">
