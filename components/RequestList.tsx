@@ -79,7 +79,7 @@ async function act(body: any) {
       {/* ✅ overlay loader while any PATCH/POST action is pending */}
       {isPending ? <AppLoader /> : null}
 
-      <Card className="overflow-hidden">
+<Card className="overflow-visible">
         <div className="hidden grid-cols-[1.2fr_0.7fr_0.9fr_110px] gap-3 border-b border-border px-4 py-3 text-xs font-semibold text-muted md:grid">
           <div>{t('tableTitle')}</div>
           <div>{t('tableStatus')}</div>
